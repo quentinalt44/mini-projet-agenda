@@ -113,6 +113,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
+  agendaItem: {
+    backgroundColor: 'white',
+    flex: 1,
+    borderRadius: 5,
+    padding: 10,
+    marginRight: 10,
+    marginTop: 17
+  },
+  agendaItemTitle: {
+    fontSize: 16,
+    fontWeight: '500'
+  },
+  agendaItemSummary: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4
+  },
+  emptyDate: {
+    height: 15,
+    flex: 1,
+    paddingTop: 30,
+    alignItems: 'center'
+  }
 });
 
 export default styles;

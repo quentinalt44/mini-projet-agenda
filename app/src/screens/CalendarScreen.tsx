@@ -8,19 +8,14 @@ import {
   TouchableWithoutFeedback,
   Platform,
 } from 'react-native';
-import * as SQLite from 'expo-sqlite';
+import { databaseService } from '../database/DatabaseService';
 import { Agenda, Timeline, WeekCalendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import DrawerItem from '../components/DrawerItem';
 import CustomKnob from '../components/CustomKnob';
 import EventModal from '../components/EventModal';
 import styles from '../styles/styles';
-import { formatDate, formatTime } from '../utils/dateUtils';
-
-interface MonthChangeData {
-  year: number;
-  month: number;
-}
+//import { formatDate, formatTime } from '../utils/dateUtils';
 
 interface CalendarDay {
   dateString: string;
@@ -31,14 +26,6 @@ interface TimelineEvent {
   end: string;
   title: string;
   summary?: string;
-}
-
-interface DBEvent {
-  id: number;
-  title: string;
-  summary: string | null;
-  start_date: string;
-  end_date: string;
 }
 
 type ViewType = 'day' | 'week' | 'month';
@@ -53,16 +40,20 @@ interface AgendaItem {
 interface AgendaItems {
   [key: string]: AgendaItem[];
 }
-
-const db = SQLite.openDatabaseSync('calendar.db');
-
 const CalendarScreen = () => {
   const calendarRef = useRef<any>(null);
-  const [selectedDate, setSelectedDate] = useState('2025-03-05');
-  const [currentMonth, setCurrentMonth] = useState('2025-03');
   const today = new Date();
   const todayString = today.toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(todayString); // Initialisation à aujourd'hui
+  const [currentMonth, setCurrentMonth] = useState(todayString.substring(0, 7));
   const todayDay = today.getDate();
+  const [markedDates, setMarkedDates] = useState({
+    [selectedDate]: {
+      selected: true,
+      selectedColor: '#1a73e8',
+      marked: false
+    }
+  });
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const drawerAnimation = useRef(new Animated.Value(0)).current;
   const screenWidth = Dimensions.get('window').width;
@@ -89,23 +80,52 @@ const CalendarScreen = () => {
     current: 'date'
   });
 
-  const handleAddNewEvent = () => {
+  useEffect(() => {
+    loadEvents();
+  }, []);
+
+  const loadEvents = async () => {
+    try {
+      const dbEvents = await databaseService.getEvents();
+      if (Array.isArray(dbEvents)) {
+        const formattedEvents = dbEvents.map(event => ({
+          start: event.start_date,
+          end: event.end_date,
+          title: event.title,
+          summary: event.summary
+        }));
+        setEvents(formattedEvents);
+      } else {
+        setEvents([]);
+      }
+    } catch (error) {
+      console.error('Error loading events:', error);
+      setEvents([]);
+    }
+  };
+
+  const handleAddNewEvent = async () => {
     const startDateTime = new Date(selectedEventDate);
     startDateTime.setHours(selectedStartTime.getHours(), selectedStartTime.getMinutes());
 
     const endDateTime = new Date(selectedEventDate);
     endDateTime.setHours(selectedEndTime.getHours(), selectedEndTime.getMinutes());
 
-    const newTimelineEvent: TimelineEvent = {
-      start: startDateTime.toISOString(),
-      end: endDateTime.toISOString(),
+    const newTimelineEvent = {
       title: newEvent.title,
-      summary: newEvent.summary
+      summary: newEvent.summary,
+      start_date: startDateTime.toISOString(),
+      end_date: endDateTime.toISOString()
     };
 
-    setEvents([...events, newTimelineEvent]);
-    setIsModalVisible(false);
-    setNewEvent({ title: '', summary: '', start: new Date().toISOString(), end: new Date().toISOString() });
+    try {
+      await databaseService.addEvent(newTimelineEvent);
+      await loadEvents();
+      setIsModalVisible(false);
+      setNewEvent({ title: '', summary: '', start: new Date().toISOString(), end: new Date().toISOString() });
+    } catch (error) {
+      console.error('Error saving event:', error);
+    }
   };
 
   const handlePickerChange = (event: any, selected?: Date) => {
@@ -140,12 +160,32 @@ const CalendarScreen = () => {
   };
 
   const handleTodayPress = () => {
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0];
+    
     setSelectedDate(todayString);
+    setCurrentMonth(todayString.substring(0, 7));
+    
+    setMarkedDates({
+      [todayString]: {
+        selected: true,
+        selectedColor: '#1a73e8',
+        marked: false
+      }
+    });
   };
 
   const handleDayPress = (day: CalendarDay) => {
     setSelectedDate(day.dateString);
     setCurrentMonth(day.dateString.substring(0, 7));
+    
+    setMarkedDates({
+      [day.dateString]: {
+        selected: true,
+        selectedColor: '#1a73e8',
+        marked: false
+      }
+    });
   };
 
   const toggleDrawer = () => {
@@ -174,6 +214,7 @@ const CalendarScreen = () => {
     textSectionTitleColor: '#b6c1cd',
     selectedDayBackgroundColor: '#1a73e8',
     selectedDayTextColor: '#ffffff',
+    todayBackgroundColor: 'transparent', // Ajoutez cette ligne
     todayTextColor: '#1a73e8',
     dayTextColor: '#2d4150',
     textDisabledColor: '#d9e1e8',
@@ -185,11 +226,29 @@ const CalendarScreen = () => {
     textMonthFontSize: 16,
   };
 
-  const markedDates = {
-    [selectedDate]: {
-      selected: true,
-      selectedColor: '#1a73e8',
+  // Using the state variable instead of creating a new constant
+
+  const loadItemsForMonth = (day: CalendarDay) => {
+    const items: AgendaItems = {};
+    
+    events.forEach(event => {
+      const eventDate = event.start.split('T')[0];
+      if (!items[eventDate]) {
+        items[eventDate] = [];
+      }
+      items[eventDate].push({
+        name: event.title,
+        height: 50,
+        summary: event.summary
+      });
+    });
+
+    // Si aucun événement n'existe pour le jour sélectionné, on renvoie un objet vide
+    if (!items[day.dateString]) {
+      items[day.dateString] = [];
     }
+
+    return items;
   };
 
   const renderCalendar = () => {
@@ -207,57 +266,57 @@ const CalendarScreen = () => {
 
       case 'month':
       default:
-        const agendaItems: AgendaItems = {};
-        if (events.length > 0) {
-          agendaItems[selectedDate] = events.map(event => ({
-            name: event.title,
-            height: 50,
-            summary: event.summary
-          }));
-        } else {
-          agendaItems[selectedDate] = [{
-            name: 'Pas d\'événement pour ce jour',
-            height: 50,
-          }];
-        }
-
         return (
           <Agenda
-            style={[styles.calendar, { height: '100%' }]}
-            theme={theme}
-            onDayPress={handleDayPress}
+            ref={calendarRef}
+            items={loadItemsForMonth({ dateString: selectedDate })}
             selected={selectedDate}
-            current={selectedDate}
-            minDate={'2024-01-01'}
-            maxDate={'2030-12-31'}
-            firstDay={1}
-            pastScrollRange={50}
-            futureScrollRange={50}
+            renderEmptyDate={() => (
+              <View style={styles.emptyDate}>
+                <Text>Pas d'événement</Text>
+              </View>
+            )}
             renderEmptyData={() => (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <Text>Aucun événement</Text>
+              <View style={styles.emptyDate}>
+                <Text>Pas d'événement pour ce jour</Text>
               </View>
             )}
-            items={agendaItems}
+            rowHasChanged={(r1: AgendaItem, r2: AgendaItem) => {
+              return r1.name !== r2.name;
+            }}
             renderItem={(item: AgendaItem) => (
-              <View style={{
-                backgroundColor: 'white',
-                flex: 1,
-                padding: 10,
-                marginRight: 10,
-                marginTop: 17,
-                borderRadius: 5
-              }}>
-                <Text>{item.name}</Text>
+              <TouchableOpacity 
+                style={styles.agendaItem}
+                onPress={() => {/* gérer le tap sur l'événement */}}
+              >
+                <Text style={styles.agendaItemTitle}>{item.name}</Text>
                 {item.summary && (
-                  <Text style={{ fontSize: 12, color: '#666' }}>{item.summary}</Text>
+                  <Text style={styles.agendaItemSummary}>{item.summary}</Text>
                 )}
-              </View>
+              </TouchableOpacity>
             )}
-            showClosingKnob={false}
-            hideKnob={false}
-            renderKnob={() => <CustomKnob />}
+            theme={{
+              ...theme, // Gardez les thèmes existants
+              agendaDayTextColor: '#2d4150',
+              agendaDayNumColor: '#2d4150',
+              agendaTodayColor: '#1a73e8',
+              agendaKnobColor: '#1a73e8',
+              selectedDayBackgroundColor: '#1a73e8',
+              selectedDayTextColor: '#ffffff',
+              dotColor: '#1a73e8',
+              selectedDotColor: '#ffffff',
+              todayBackgroundColor: 'transparent',
+              todayTextColor: '#1a73e8'
+            }}
+            showClosingKnob={true}
             enableSwipeMonths={true}
+            markedDates={markedDates}
+            pastScrollRange={12}
+            futureScrollRange={12}
+            showOnlySelectedDayItems={true}
+            hideExtraDays={true}
+            onDayPress={handleDayPress}
+            current={selectedDate}
           />
         );
     }
