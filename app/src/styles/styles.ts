@@ -131,10 +131,12 @@ const styles = StyleSheet.create({
     marginTop: 4
   },
   emptyDate: {
-    height: 15,
+    backgroundColor: 'white',
     flex: 1,
-    paddingTop: 30,
-    alignItems: 'center'
+    borderRadius: 5,
+    padding: 10,
+    marginRight: 10,
+    marginTop: 17
   }
 });
 

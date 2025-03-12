@@ -67,8 +67,17 @@ const CalendarScreen = () => {
     start: new Date().toISOString(),
     end: new Date().toISOString()
   });
-  const [selectedStartTime, setSelectedStartTime] = useState(new Date());
-  const [selectedEndTime, setSelectedEndTime] = useState(new Date());
+  const [selectedStartTime, setSelectedStartTime] = useState(() => {
+    const now = new Date();
+    now.setHours(9, 0, 0, 0); // 9:00 par défaut
+    return now;
+  });
+
+  const [selectedEndTime, setSelectedEndTime] = useState(() => {
+    const now = new Date();
+    now.setHours(10, 0, 0, 0); // 10:00 par défaut
+    return now;
+  });
   const [selectedEventDate, setSelectedEventDate] = useState(new Date());
   const [currentPicker, setCurrentPicker] = useState<{
     show: boolean;
@@ -129,10 +138,8 @@ const CalendarScreen = () => {
   };
 
   const handlePickerChange = (event: any, selected?: Date) => {
-    setCurrentPicker(prev => ({ ...prev, show: Platform.OS === 'ios' }));
-
     if (!selected) return;
-
+  
     switch (currentPicker.current) {
       case 'date':
         setSelectedEventDate(selected);
@@ -300,7 +307,6 @@ const CalendarScreen = () => {
               agendaDayTextColor: '#2d4150',
               agendaDayNumColor: '#2d4150',
               agendaTodayColor: '#1a73e8',
-              agendaKnobColor: '#1a73e8',
               selectedDayBackgroundColor: '#1a73e8',
               selectedDayTextColor: '#ffffff',
               dotColor: '#1a73e8',
@@ -309,17 +315,45 @@ const CalendarScreen = () => {
               todayTextColor: '#1a73e8'
             }}
             showClosingKnob={true}
+            renderKnob={() => <CustomKnob />}
             enableSwipeMonths={true}
             markedDates={markedDates}
             pastScrollRange={12}
             futureScrollRange={12}
             showOnlySelectedDayItems={true}
-            hideExtraDays={true}
+            hideExtraDays={false}
             onDayPress={handleDayPress}
             current={selectedDate}
+            firstDay={1}
           />
         );
     }
+  };
+
+  const handleFabPress = () => {
+    const selectedDateObj = new Date(selectedDate);
+    setSelectedEventDate(selectedDateObj);
+    
+    // Update times while keeping previously selected hours
+    const newStartTime = new Date(selectedDateObj);
+    newStartTime.setHours(
+      selectedStartTime.getHours(),
+      selectedStartTime.getMinutes(),
+      0,
+      0
+    );
+    setSelectedStartTime(newStartTime);
+
+    const newEndTime = new Date(selectedDateObj);
+    newEndTime.setHours(
+      selectedEndTime.getHours(),
+      selectedEndTime.getMinutes(),
+      0,
+      0
+    );
+    setSelectedEndTime(newEndTime);
+
+    setIsModalVisible(true);
   };
 
   return (
@@ -412,7 +446,7 @@ const CalendarScreen = () => {
       {/* FAB */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setIsModalVisible(true)}
+        onPress={handleFabPress}
       >
         <Ionicons name="add" size={30} color="#ffffff" />
       </TouchableOpacity>
@@ -430,6 +464,7 @@ const CalendarScreen = () => {
         showPicker={showPicker}
         currentPicker={currentPicker}
         handlePickerChange={handlePickerChange}
+        setCurrentPicker={setCurrentPicker}
       />
     </View>
   );
