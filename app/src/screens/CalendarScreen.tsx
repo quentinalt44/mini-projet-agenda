@@ -7,6 +7,7 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
   Platform,
+  Alert,
 } from 'react-native';
 import { databaseService } from '../database/DatabaseService';
 import { Agenda, Timeline, WeekCalendar } from 'react-native-calendars';
@@ -108,11 +109,11 @@ const CalendarScreen = () => {
   const [currentPicker, setCurrentPicker] = useState<{
     show: boolean;
     mode: 'date' | 'time';
-    current: 'date' | 'start' | 'end';
+    current: 'start_date' | 'start_time' | 'end_date' | 'end_time';
   }>({
     show: false,
     mode: 'date',
-    current: 'date'
+    current: 'start_date'
   });
 
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -144,29 +145,24 @@ const CalendarScreen = () => {
   };
 
   const handleAddNewEvent = async () => {
-    // Create the event object
-    const eventData: { title: string; summary?: string; start_date: string; end_date: string; id?: number } = {
+    if (!isValidEventTimes()) {
+      Alert.alert(
+        "Erreur",
+        "La date et l'heure de fin doivent être postérieures à la date et l'heure de début",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+  
+    const eventData = {
       title: newEvent.title,
       summary: newEvent.summary,
-      start_date: new Date(
-        selectedEventDate.getFullYear(),
-        selectedEventDate.getMonth(),
-        selectedEventDate.getDate(),
-        selectedStartTime.getHours(),
-        selectedStartTime.getMinutes()
-      ).toISOString(),
-      end_date: new Date(
-        selectedEventDate.getFullYear(),
-        selectedEventDate.getMonth(),
-        selectedEventDate.getDate(),
-        selectedEndTime.getHours(),
-        selectedEndTime.getMinutes()
-      ).toISOString()
+      start_date: selectedStartTime.toISOString(),
+      end_date: selectedEndTime.toISOString(),
     };
-
+  
     try {
       if (newEvent.id) {
-        // If we have an ID, we're editing
         await databaseService.updateEvent(newEvent.id.toString(), {
           title: eventData.title,
           summary: eventData.summary,
@@ -174,15 +170,11 @@ const CalendarScreen = () => {
           end: eventData.end_date
         });
       } else {
-        // If no ID, we're creating
         await databaseService.addEvent(eventData);
       }
   
-      // Refresh the events list and reset the form
       await loadEvents();
       setIsModalVisible(false);
-      
-      // Reset the form
       setNewEvent({
         title: '',
         summary: '',
@@ -199,28 +191,44 @@ const CalendarScreen = () => {
     if (!selected) return;
   
     switch (currentPicker.current) {
-      case 'date':
-        setSelectedEventDate(selected);
+      case 'start_date':
+        const newStartDate = new Date(selectedStartTime);
+        newStartDate.setFullYear(selected.getFullYear());
+        newStartDate.setMonth(selected.getMonth());
+        newStartDate.setDate(selected.getDate());
+        setSelectedStartTime(newStartDate);
         break;
-      case 'start':
-        setSelectedStartTime(selected);
-        if (selectedEndTime < selected) {
-          const newEndTime = new Date(selected);
-          newEndTime.setHours(selected.getHours() + 1);
-          setSelectedEndTime(newEndTime);
-        }
+      case 'start_time':
+        const startWithNewTime = new Date(selectedStartTime);
+        startWithNewTime.setHours(selected.getHours());
+        startWithNewTime.setMinutes(selected.getMinutes());
+        setSelectedStartTime(startWithNewTime);
         break;
-      case 'end':
-        setSelectedEndTime(selected);
+      case 'end_date':
+        const newEndDate = new Date(selectedEndTime);
+        newEndDate.setFullYear(selected.getFullYear());
+        newEndDate.setMonth(selected.getMonth());
+        newEndDate.setDate(selected.getDate());
+        setSelectedEndTime(newEndDate);
+        break;
+      case 'end_time':
+        const endWithNewTime = new Date(selectedEndTime);
+        endWithNewTime.setHours(selected.getHours());
+        endWithNewTime.setMinutes(selected.getMinutes());
+        setSelectedEndTime(endWithNewTime);
         break;
     }
   };
 
-  const showPicker = (type: 'date' | 'start' | 'end') => {
+  const showPicker = (type: 'date' | 'start_date' | 'start_time' | 'end_date' | 'end_time' | 'start' | 'end') => {
+    const isDateType = type.includes('date') || type === 'date';
     setCurrentPicker({
       show: true,
-      mode: type === 'date' ? 'date' : 'time',
-      current: type
+      mode: isDateType ? 'date' : 'time',
+      current: type === 'date' ? 'start_date' : 
+               type === 'start' ? 'start_time' :
+               type === 'end' ? 'end_time' :
+               type as 'start_date' | 'start_time' | 'end_date' | 'end_time'
     });
   };
 
@@ -297,18 +305,30 @@ const CalendarScreen = () => {
     const items: AgendaItems = {};
     
     events.forEach(event => {
-      const eventDate = event.start.split('T')[0];
-      if (!items[eventDate]) {
-        items[eventDate] = [];
+      const startDate = new Date(event.start);
+      const endDate = new Date(event.end);
+      
+      // Loop through all days between start and end date
+      let currentDate = new Date(startDate);
+      while (currentDate <= endDate) {
+        const dateString = currentDate.toISOString().split('T')[0];
+        
+        if (!items[dateString]) {
+          items[dateString] = [];
+        }
+        
+        items[dateString].push({
+          id: event.id,
+          title: event.title,
+          height: 50,
+          summary: event.summary,
+          start: event.start,
+          end: event.end
+        });
+        
+        // Move to next day
+        currentDate.setDate(currentDate.getDate() + 1);
       }
-      items[eventDate].push({
-        id: event.id, // Ajout de l'ID
-        title: event.title,
-        height: 50,
-        summary: event.summary,
-        start: event.start,
-        end: event.end
-      });
     });
   
     if (!items[day.dateString]) {
@@ -462,6 +482,10 @@ const CalendarScreen = () => {
     setModalMode('edit'); // Set mode to edit
     setIsDetailsModalVisible(false);
     setIsModalVisible(true);
+  };
+
+  const isValidEventTimes = () => {
+    return selectedEndTime > selectedStartTime;
   };
 
   return (

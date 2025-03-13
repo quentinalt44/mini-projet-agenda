@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Platform, Switch } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 //import { Ionicons } from '@expo/vector-icons';
 
@@ -18,11 +18,11 @@ interface EventModalProps {
   selectedStartTime: Date;
   selectedEndTime: Date;
   selectedEventDate: Date;
-  showPicker: (type: 'date' | 'start' | 'end') => void;
+  showPicker: (type: 'date' | 'start' | 'end' | 'start_date' | 'start_time' | 'end_date' | 'end_time') => void;
   currentPicker: {
     show: boolean;
     mode: 'date' | 'time';
-    current: 'date' | 'start' | 'end';
+    current: 'date' | 'start' | 'end' | 'start_date' | 'start_time' | 'end_date' | 'end_time';
   };
   setCurrentPicker: (picker: any) => void;
   handlePickerChange: (event: any, selected?: Date) => void;
@@ -92,38 +92,53 @@ const EventModal: React.FC<EventModalProps> = ({
             onChangeText={(text) => setNewEvent({ ...newEvent, title: text })}
           />
 
-          <View style={styles.pickerSection}>
-            <Text style={styles.pickerLabel}>Date</Text>
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => showPicker('date')}
-            >
-              <Text style={styles.dateButtonText}>
-                {selectedEventDate ? formatDate(selectedEventDate) : "Sélectionner une date"}
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.switchContainer}>
+            <Text style={styles.switchLabel}>Exemple</Text>
+            <Switch
+              trackColor={{ false: "#767577", true: "#81b0ff" }}
+              thumbColor={false ? "#f5dd4b" : "#f4f3f4"}
+              ios_backgroundColor="#3e3e3e"
+              onValueChange={() => {}}
+              value={false}
+            />
           </View>
 
-          <View style={styles.timeContainer}>
-            <View style={styles.timeSection}>
-              <Text style={styles.pickerLabel}>Début</Text>
+          <View style={styles.dateTimeContainer}>
+            <View style={styles.dateTimeSection}>
+              <Text style={styles.sectionLabel}>Début</Text>
               <TouchableOpacity
-                style={styles.timePickerButton}
-                onPress={() => showPicker('start')}
+                style={styles.pickerButton}
+                onPress={() => showPicker('start_date')}
               >
-                <Text style={styles.timePickerText}>
+                <Text style={styles.pickerButtonText}>
+                  {formatDate(selectedStartTime)}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => showPicker('start_time')}
+              >
+                <Text style={styles.pickerButtonText}>
                   {formatTime(selectedStartTime)}
                 </Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.timeSection}>
-              <Text style={styles.pickerLabel}>Fin</Text>
+            <View style={styles.dateTimeSection}>
+              <Text style={styles.sectionLabel}>Fin</Text>
               <TouchableOpacity
-                style={styles.timePickerButton}
-                onPress={() => showPicker('end')}
+                style={styles.pickerButton}
+                onPress={() => showPicker('end_date')}
               >
-                <Text style={styles.timePickerText}>
+                <Text style={styles.pickerButtonText}>
+                  {formatDate(selectedEndTime)}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => showPicker('end_time')}
+              >
+                <Text style={styles.pickerButtonText}>
                   {formatTime(selectedEndTime)}
                 </Text>
               </TouchableOpacity>
@@ -164,13 +179,11 @@ const EventModal: React.FC<EventModalProps> = ({
                 <View style={styles.pickerModalContent}>
                   <DateTimePicker
                     value={
-                      currentPicker.current === 'date'
-                        ? selectedEventDate
-                        : currentPicker.current === 'start'
-                        ? selectedStartTime
+                      currentPicker.current.startsWith('start') 
+                        ? selectedStartTime 
                         : selectedEndTime
                     }
-                    mode={currentPicker.mode}
+                    mode={currentPicker.current.endsWith('date') ? 'date' : 'time'}
                     is24Hour={true}
                     display="spinner"
                     onChange={handlePickerChange}
@@ -318,6 +331,51 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '500',
+  },
+  dateTimeContainer: {
+    flexDirection: 'row',
+    marginBottom: 15,
+    justifyContent: 'space-between',
+  },
+  dateTimeSection: {
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  sectionLabel: {
+    fontSize: 16,
+    color: '#2d4150',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  pickerButton: {
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    marginBottom: 10,
+  },
+  pickerButtonText: {
+    fontSize: 16,
+    color: '#2d4150',
+    textAlign: 'center',
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+  },
+  switchLabel: {
+    fontSize: 16,
+    color: '#2d4150',
   },
 });
 
