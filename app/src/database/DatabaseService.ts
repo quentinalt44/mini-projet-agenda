@@ -1,5 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 
+const API_URL = 'http://your-api-url'; // Replace with your actual API URL
+
 interface Event {
   id?: number;
   title: string;
@@ -85,6 +87,20 @@ class DatabaseService {
       return result || [];
     } catch (error) {
       console.error('Error getting events:', error);
+      throw error;
+    }
+  }
+
+  async updateEvent(id: string, event: { title: string; summary?: string; start: string; end: string }): Promise<void> {
+    try {
+      await this.db.runAsync(
+        'UPDATE events SET title = ?, summary = ?, start_date = ?, end_date = ? WHERE id = ?',
+        [event.title, event.summary || null, event.start, event.end, id]
+      );
+      console.log(`✏️ Event ${id} updated successfully`);
+      await this.displayTableContent();
+    } catch (error) {
+      console.error('Error updating event:', error);
       throw error;
     }
   }

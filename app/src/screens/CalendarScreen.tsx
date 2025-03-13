@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DrawerItem from '../components/DrawerItem';
 import CustomKnob from '../components/CustomKnob';
 import EventModal from '../components/EventModal';
+import EventDetailsModal from '../components/EventDetailsModal';
 import styles from '../styles/styles';
 //import { formatDate, formatTime } from '../utils/dateUtils';
 
@@ -22,6 +23,7 @@ interface CalendarDay {
 }
 
 interface TimelineEvent {
+  id?: string;
   start: string;
   end: string;
   title: string;
@@ -30,11 +32,16 @@ interface TimelineEvent {
 
 type ViewType = 'day' | 'week' | 'month';
 
-interface AgendaItem {
-  id?: number;
-  name: string;
-  height: number;
+interface Event {
+  id?: string;
+  title: string;
   summary?: string;
+  start: string;
+  end: string;
+}
+
+interface AgendaItem extends Event {
+  height?: number;
 }
 
 interface AgendaItems {
@@ -61,7 +68,7 @@ const CalendarScreen = () => {
   const [activeView, setActiveView] = useState<ViewType>('month');
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [newEvent, setNewEvent] = useState({
+  const [newEvent, setNewEvent] = useState<Event>({
     title: '',
     summary: '',
     start: new Date().toISOString(),
@@ -89,6 +96,9 @@ const CalendarScreen = () => {
     current: 'date'
   });
 
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
+
   useEffect(() => {
     loadEvents();
   }, []);
@@ -98,6 +108,7 @@ const CalendarScreen = () => {
       const dbEvents = await databaseService.getEvents();
       if (Array.isArray(dbEvents)) {
         const formattedEvents = dbEvents.map(event => ({
+          id: event.id?.toString(), // Convert number to string
           start: event.start_date,
           end: event.end_date,
           title: event.title,
@@ -114,19 +125,25 @@ const CalendarScreen = () => {
   };
 
   const handleAddNewEvent = async () => {
-    const startDateTime = new Date(selectedEventDate);
-    startDateTime.setHours(selectedStartTime.getHours(), selectedStartTime.getMinutes());
-
-    const endDateTime = new Date(selectedEventDate);
-    endDateTime.setHours(selectedEndTime.getHours(), selectedEndTime.getMinutes());
-
     const newTimelineEvent = {
       title: newEvent.title,
       summary: newEvent.summary,
-      start_date: startDateTime.toISOString(),
-      end_date: endDateTime.toISOString()
+      start_date: new Date(
+        selectedEventDate.getFullYear(),
+        selectedEventDate.getMonth(),
+        selectedEventDate.getDate(),
+        selectedStartTime.getHours(),
+        selectedStartTime.getMinutes()
+      ).toISOString(),
+      end_date: new Date(
+        selectedEventDate.getFullYear(),
+        selectedEventDate.getMonth(),
+        selectedEventDate.getDate(),
+        selectedEndTime.getHours(),
+        selectedEndTime.getMinutes()
+      ).toISOString(),
     };
-
+  
     try {
       await databaseService.addEvent(newTimelineEvent);
       await loadEvents();
@@ -244,17 +261,19 @@ const CalendarScreen = () => {
         items[eventDate] = [];
       }
       items[eventDate].push({
-        name: event.title,
+        id: event.id, // Ajout de l'ID
+        title: event.title,
         height: 50,
-        summary: event.summary
+        summary: event.summary,
+        start: event.start,
+        end: event.end
       });
     });
-
-    // Si aucun événement n'existe pour le jour sélectionné, on renvoie un objet vide
+  
     if (!items[day.dateString]) {
       items[day.dateString] = [];
     }
-
+  
     return items;
   };
 
@@ -289,14 +308,14 @@ const CalendarScreen = () => {
               </View>
             )}
             rowHasChanged={(r1: AgendaItem, r2: AgendaItem) => {
-              return r1.name !== r2.name;
+              return r1.title !== r2.title;
             }}
             renderItem={(item: AgendaItem) => (
               <TouchableOpacity 
                 style={styles.agendaItem}
-                onPress={() => {/* gérer le tap sur l'événement */}}
+                onPress={() => handleEventPress(item)}
               >
-                <Text style={styles.agendaItemTitle}>{item.name}</Text>
+                <Text style={styles.agendaItemTitle}>{item.title}</Text>
                 {item.summary && (
                   <Text style={styles.agendaItemSummary}>{item.summary}</Text>
                 )}
@@ -354,6 +373,31 @@ const CalendarScreen = () => {
     setSelectedEndTime(newEndTime);
 
     setIsModalVisible(true);
+  };
+
+  const handleEventPress = (item: AgendaItem) => {
+    // Assurez-vous que l'ID est présent
+    if (!item.id) {
+      console.error('Event has no ID');
+      return;
+    }
+    setSelectedEvent(item);
+    setIsDetailsModalVisible(true);
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!selectedEvent || !selectedEvent.id) {
+      console.error('No event selected or no event ID');
+      return;
+    }
+    
+    try {
+      await databaseService.deleteEvent(Number(selectedEvent.id));
+      await loadEvents();
+      setIsDetailsModalVisible(false);
+    } catch (error) {
+      console.error('Error deleting event:', error);
+    }
   };
 
   return (
@@ -465,6 +509,21 @@ const CalendarScreen = () => {
         currentPicker={currentPicker}
         handlePickerChange={handlePickerChange}
         setCurrentPicker={setCurrentPicker}
+      />
+
+      {/* Modal de détails */}
+      <EventDetailsModal
+        isVisible={isDetailsModalVisible}
+        event={{
+          id: selectedEvent?.id, // Ajout de l'ID
+          title: selectedEvent?.title || '',
+          summary: selectedEvent?.summary,
+          start: selectedEvent?.start || new Date().toISOString(),
+          end: selectedEvent?.end || new Date().toISOString()
+        }}
+        onClose={() => setIsDetailsModalVisible(false)}
+        onEdit={() => console.log('Edit event')}
+        onDelete={handleDeleteEvent}
       />
     </View>
   );
