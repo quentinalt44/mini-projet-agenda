@@ -33,11 +33,29 @@ interface TimelineEvent {
 type ViewType = 'day' | 'week' | 'month';
 
 interface Event {
-  id?: string;
+  id?: string | number;
   title: string;
   summary?: string;
   start: string;
   end: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+interface EventUpdateData {
+  id?: number;
+  title: string;
+  summary?: string;
+  start_date: string;
+  end_date: string;
+}
+
+interface EventData {
+  title: string;
+  summary?: string;
+  start_date: string;
+  end_date: string;
+  id?: number;
 }
 
 interface AgendaItem extends Event {
@@ -68,6 +86,7 @@ const CalendarScreen = () => {
   const [activeView, setActiveView] = useState<ViewType>('month');
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [newEvent, setNewEvent] = useState<Event>({
     title: '',
     summary: '',
@@ -125,7 +144,8 @@ const CalendarScreen = () => {
   };
 
   const handleAddNewEvent = async () => {
-    const newTimelineEvent = {
+    // Create the event object
+    const eventData: { title: string; summary?: string; start_date: string; end_date: string; id?: number } = {
       title: newEvent.title,
       summary: newEvent.summary,
       start_date: new Date(
@@ -141,18 +161,39 @@ const CalendarScreen = () => {
         selectedEventDate.getDate(),
         selectedEndTime.getHours(),
         selectedEndTime.getMinutes()
-      ).toISOString(),
+      ).toISOString()
     };
-  
+
     try {
-      await databaseService.addEvent(newTimelineEvent);
+      if (newEvent.id) {
+        // If we have an ID, we're editing
+        await databaseService.updateEvent(newEvent.id.toString(), {
+          title: eventData.title,
+          summary: eventData.summary,
+          start: eventData.start_date,
+          end: eventData.end_date
+        });
+      } else {
+        // If no ID, we're creating
+        await databaseService.addEvent(eventData);
+      }
+  
+      // Refresh the events list and reset the form
       await loadEvents();
       setIsModalVisible(false);
-      setNewEvent({ title: '', summary: '', start: new Date().toISOString(), end: new Date().toISOString() });
+      
+      // Reset the form
+      setNewEvent({
+        title: '',
+        summary: '',
+        start: new Date().toISOString(),
+        end: new Date().toISOString()
+      });
     } catch (error) {
       console.error('Error saving event:', error);
     }
   };
+  
 
   const handlePickerChange = (event: any, selected?: Date) => {
     if (!selected) return;
@@ -362,7 +403,7 @@ const CalendarScreen = () => {
       0
     );
     setSelectedStartTime(newStartTime);
-
+  
     const newEndTime = new Date(selectedDateObj);
     newEndTime.setHours(
       selectedEndTime.getHours(),
@@ -371,7 +412,8 @@ const CalendarScreen = () => {
       0
     );
     setSelectedEndTime(newEndTime);
-
+  
+    setModalMode('create'); // Set mode to create
     setIsModalVisible(true);
   };
 
@@ -398,6 +440,28 @@ const CalendarScreen = () => {
     } catch (error) {
       console.error('Error deleting event:', error);
     }
+  };
+
+  const handleEditEvent = () => {
+    if (!selectedEvent) return;
+  
+    const startDate = new Date(selectedEvent.start);
+    const endDate = new Date(selectedEvent.end);
+  
+    setSelectedEventDate(startDate);
+    setSelectedStartTime(startDate);
+    setSelectedEndTime(endDate);
+    setNewEvent({
+      id: selectedEvent.id,
+      title: selectedEvent.title,
+      summary: selectedEvent.summary || '',
+      start: selectedEvent.start,
+      end: selectedEvent.end
+    });
+  
+    setModalMode('edit'); // Set mode to edit
+    setIsDetailsModalVisible(false);
+    setIsModalVisible(true);
   };
 
   return (
@@ -498,6 +562,7 @@ const CalendarScreen = () => {
       {/* Modal principal */}
       <EventModal
         isVisible={isModalVisible}
+        mode={modalMode} // Use modalMode instead of checking newEvent.id
         newEvent={newEvent}
         setNewEvent={setNewEvent}
         handleAddNewEvent={handleAddNewEvent}
@@ -515,14 +580,14 @@ const CalendarScreen = () => {
       <EventDetailsModal
         isVisible={isDetailsModalVisible}
         event={{
-          id: selectedEvent?.id, // Ajout de l'ID
+          id: selectedEvent?.id?.toString(), // Convert ID to string
           title: selectedEvent?.title || '',
           summary: selectedEvent?.summary,
           start: selectedEvent?.start || new Date().toISOString(),
           end: selectedEvent?.end || new Date().toISOString()
         }}
         onClose={() => setIsDetailsModalVisible(false)}
-        onEdit={() => console.log('Edit event')}
+        onEdit={handleEditEvent}
         onDelete={handleDeleteEvent}
       />
     </View>

@@ -66,7 +66,13 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
             <View style={styles.actions}>
               <TouchableOpacity 
                 style={styles.actionButton}
-                onPress={handleDelete}  // Changed from onDelete to handleDelete
+                onPress={onEdit}
+              >
+                <Ionicons name="pencil" size={24} color="#1a73e8" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={handleDelete}
               >
                 <Ionicons name="trash" size={24} color="#dc3545" />
               </TouchableOpacity>

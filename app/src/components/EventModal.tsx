@@ -5,6 +5,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface EventModalProps {
   isVisible: boolean;
+  mode: 'create' | 'edit'; // Add this line
   newEvent: {
     title: string;
     summary?: string;
@@ -29,6 +30,7 @@ interface EventModalProps {
 
 const EventModal: React.FC<EventModalProps> = ({
   isVisible,
+  mode, // Add this line
   newEvent,
   setNewEvent,
   handleAddNewEvent,
@@ -79,7 +81,9 @@ const EventModal: React.FC<EventModalProps> = ({
     >
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Ajoutez un évènement</Text>
+          <Text style={styles.modalTitle}>
+            {mode === 'create' ? "Ajoutez un évènement" : "Modifier l'évènement"}
+          </Text>
 
           <TextInput
             style={styles.input}
