@@ -9,6 +9,8 @@ interface Event {
   start_date: string;
   end_date: string;
   created_at?: string;
+  isFullDay?: boolean;
+  is_full_day?: number;
 }
 
 class DatabaseService {
@@ -21,6 +23,10 @@ class DatabaseService {
 
   private async initDatabase() {
     try {
+      // Supprimer la table si elle existe
+      await this.db.runAsync('DROP TABLE IF EXISTS events');
+      
+      // Créer la table avec la nouvelle structure
       await this.db.runAsync(
         `CREATE TABLE IF NOT EXISTS events (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,6 +34,7 @@ class DatabaseService {
           summary TEXT,
           start_date TEXT NOT NULL,
           end_date TEXT NOT NULL,
+          is_full_day INTEGER DEFAULT 0,
           created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );`
       );
@@ -48,13 +55,14 @@ class DatabaseService {
       if (result && result.length > 0) {
         result.forEach(event => {
           console.log(`
-            🎯 ID: ${event.id}
-            📝 Title: ${event.title}
-            📋 Summary: ${event.summary || 'N/A'}
-            ⏰ Start: ${new Date(event.start_date).toLocaleString()}
-            🔚 End: ${new Date(event.end_date).toLocaleString()}
-            ⏱️ Created: ${event.created_at}
-            --------------------------------`);
+              🎯 ID: ${event.id}
+              📝 Title: ${event.title}
+              📋 Summary: ${event.summary || 'N/A'}
+              ⏰ Start: ${new Date(event.start_date).toLocaleString()}
+              🔚 End: ${new Date(event.end_date).toLocaleString()}
+              📆 Full Day: ${Boolean(event.is_full_day) ? 'Yes' : 'No'}
+              ⏱️ Created: ${event.created_at}
+              --------------------------------`);
         });
       } else {
         console.log('No events in database');
@@ -66,10 +74,11 @@ class DatabaseService {
   }
 
   async addEvent(event: Omit<Event, 'id' | 'created_at'>): Promise<void> {
+    console.log('Adding event with full day:', event.isFullDay); // Pour debug
     try {
       await this.db.runAsync(
-        'INSERT INTO events (title, summary, start_date, end_date) VALUES (?, ?, ?, ?)',
-        [event.title, event.summary || null, event.start_date, event.end_date]
+        'INSERT INTO events (title, summary, start_date, end_date, is_full_day) VALUES (?, ?, ?, ?, ?)',
+        [event.title, event.summary || null, event.start_date, event.end_date, event.isFullDay ? 1 : 0]
       );
       console.log('✅ Event added successfully');
       await this.displayTableContent();
@@ -81,21 +90,31 @@ class DatabaseService {
 
   async getEvents(): Promise<Event[]> {
     try {
-      const result = await this.db.getAllAsync<Event>(
-        'SELECT * FROM events ORDER BY start_date'
+      const events = await this.db.getAllAsync<Event>(
+        'SELECT id, title, summary, start_date, end_date, is_full_day, created_at FROM events ORDER BY start_date'
       );
-      return result || [];
+      return events.map(event => ({
+        id: event.id,
+        title: event.title,
+        summary: event.summary,
+        start: event.start_date,
+        end: event.end_date,
+        start_date: event.start_date,
+        end_date: event.end_date,
+        isFullDay: Boolean(event.is_full_day), // Convertir la valeur numérique en booléen
+        created_at: event.created_at
+      }));
     } catch (error) {
       console.error('Error getting events:', error);
-      throw error;
+      return [];
     }
   }
 
-  async updateEvent(id: string, event: { title: string; summary?: string; start: string; end: string }): Promise<void> {
+  async updateEvent(id: string, event: { title: string; summary?: string; start: string; end: string; isFullDay?: boolean }): Promise<void> {
     try {
       await this.db.runAsync(
-        'UPDATE events SET title = ?, summary = ?, start_date = ?, end_date = ? WHERE id = ?',
-        [event.title, event.summary || null, event.start, event.end, id]
+      'UPDATE events SET title = ?, summary = ?, start_date = ?, end_date = ?, is_full_day = ? WHERE id = ?',
+      [event.title, event.summary || null, event.start, event.end, event.isFullDay ? 1 : 0, id]
       );
       console.log(`✏️ Event ${id} updated successfully`);
       await this.displayTableContent();

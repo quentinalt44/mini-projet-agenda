@@ -39,6 +39,7 @@ interface Event {
   summary?: string;
   start: string;
   end: string;
+  isFullDay?: boolean;
   start_date?: string;
   end_date?: string;
 }
@@ -92,7 +93,8 @@ const CalendarScreen = () => {
     title: '',
     summary: '',
     start: new Date().toISOString(),
-    end: new Date().toISOString()
+    end: new Date().toISOString(),
+    isFullDay: false
   });
   const [selectedStartTime, setSelectedStartTime] = useState(() => {
     const now = new Date();
@@ -159,6 +161,7 @@ const CalendarScreen = () => {
       summary: newEvent.summary,
       start_date: selectedStartTime.toISOString(),
       end_date: selectedEndTime.toISOString(),
+      isFullDay: newEvent.isFullDay
     };
   
     try {
@@ -167,7 +170,8 @@ const CalendarScreen = () => {
           title: eventData.title,
           summary: eventData.summary,
           start: eventData.start_date,
-          end: eventData.end_date
+          end: eventData.end_date,
+          isFullDay: eventData.isFullDay
         });
       } else {
         await databaseService.addEvent(eventData);
@@ -179,7 +183,8 @@ const CalendarScreen = () => {
         title: '',
         summary: '',
         start: new Date().toISOString(),
-        end: new Date().toISOString()
+        end: new Date().toISOString(),
+        isFullDay: false
       });
     } catch (error) {
       console.error('Error saving event:', error);
@@ -405,7 +410,7 @@ const CalendarScreen = () => {
             onDayPress={handleDayPress}
             current={selectedDate}
             firstDay={1}
-          />
+            />
         );
     }
   };

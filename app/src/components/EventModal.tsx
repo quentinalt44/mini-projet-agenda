@@ -1,16 +1,16 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Platform, Switch } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-//import { Ionicons } from '@expo/vector-icons';
 
 interface EventModalProps {
   isVisible: boolean;
-  mode: 'create' | 'edit'; // Add this line
+  mode: 'create' | 'edit';
   newEvent: {
     title: string;
     summary?: string;
     start: string;
     end: string;
+    isFullDay?: boolean;
   };
   setNewEvent: (event: any) => void;
   handleAddNewEvent: () => void;
@@ -30,7 +30,7 @@ interface EventModalProps {
 
 const EventModal: React.FC<EventModalProps> = ({
   isVisible,
-  mode, // Add this line
+  mode,
   newEvent,
   setNewEvent,
   handleAddNewEvent,
@@ -44,18 +44,14 @@ const EventModal: React.FC<EventModalProps> = ({
   handlePickerChange,
 }) => {
   const formatTime = (date: Date) => {
-    console.log('Formatting time for date:', date);
     if (!(date instanceof Date) || isNaN(date.getTime())) {
-      console.log('Invalid date object');
       return "Sélectionner";
     }
-    const formattedTime = date.toLocaleTimeString('fr-FR', { 
+    return date.toLocaleTimeString('fr-FR', { 
       hour: '2-digit', 
       minute: '2-digit',
       hour12: false 
     });
-    console.log('Formatted time:', formattedTime);
-    return formattedTime;
   };
 
   const formatDate = (date: Date) => {
@@ -65,12 +61,6 @@ const EventModal: React.FC<EventModalProps> = ({
       day: 'numeric',
     });
   };
-
-  console.log('Modal props:', {
-    selectedStartTime,
-    selectedEndTime,
-    currentPicker
-  });
 
   return (
     <Modal
@@ -93,13 +83,16 @@ const EventModal: React.FC<EventModalProps> = ({
           />
 
           <View style={styles.switchContainer}>
-            <Text style={styles.switchLabel}>Exemple</Text>
+            <Text style={styles.switchLabel}>Journée entière</Text>
             <Switch
               trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={false ? "#f5dd4b" : "#f4f3f4"}
+              thumbColor={newEvent.isFullDay ? "#f5dd4b" : "#f4f3f4"}
               ios_backgroundColor="#3e3e3e"
-              onValueChange={() => {}}
-              value={false}
+              onValueChange={(value) => {
+                console.log('Switch value changed to:', value); // Pour debug
+                setNewEvent({ ...newEvent, isFullDay: value });
+              }}
+              value={Boolean(newEvent.isFullDay)}
             />
           </View>
 
@@ -260,78 +253,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  dateButton: {
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    marginBottom: 15,
-  },
-  dateButtonText: {
-    fontSize: 16,
-    color: '#2d4150',
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    marginBottom: 15,
-    justifyContent: 'space-between',
-  },
-  timeSection: {
-    flex: 1,
-    marginHorizontal: 5,
-  },
-  timePickerButton: {
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-  },
-  timePickerText: {
-    fontSize: 16,
-    color: '#2d4150',
-    textAlign: 'center',
-  },
-  pickerSection: {
-    marginBottom: 15,
-  },
-  pickerLabel: {
-    fontSize: 16,
-    color: '#2d4150',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  pickerModalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  pickerModalContent: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 20,
-    width: '80%',
-    maxWidth: 500,
-    alignItems: 'center',
-  },
-  pickerCloseButton: {
-    marginTop: 10,
-    backgroundColor: '#1a73e8',
-    padding: 10,
-    borderRadius: 8,
-    minWidth: 100,
-    alignItems: 'center',
-  },
-  pickerCloseButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '500',
-  },
   dateTimeContainer: {
     flexDirection: 'row',
     marginBottom: 15,
@@ -362,6 +283,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#2d4150',
     textAlign: 'center',
+  },
+  pickerModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  pickerModalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    width: '80%',
+    maxWidth: 500,
+    alignItems: 'center',
+  },
+  pickerCloseButton: {
+    marginTop: 10,
+    backgroundColor: '#1a73e8',
+    padding: 10,
+    borderRadius: 8,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  pickerCloseButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
   },
   switchContainer: {
     flexDirection: 'row',
