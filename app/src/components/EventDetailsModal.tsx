@@ -10,6 +10,7 @@ interface EventDetailsModalProps {
       summary?: string;
       start: string;
       end: string;
+      isFullDay?: boolean;
     };
     onClose: () => void;
     onEdit: () => void;

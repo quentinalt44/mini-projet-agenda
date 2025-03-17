@@ -93,17 +93,20 @@ class DatabaseService {
       const events = await this.db.getAllAsync<Event>(
         'SELECT id, title, summary, start_date, end_date, is_full_day, created_at FROM events ORDER BY start_date'
       );
-      return events.map(event => ({
-        id: event.id,
-        title: event.title,
-        summary: event.summary,
-        start: event.start_date,
-        end: event.end_date,
-        start_date: event.start_date,
-        end_date: event.end_date,
-        isFullDay: Boolean(event.is_full_day), // Convertir la valeur numérique en booléen
-        created_at: event.created_at
-      }));
+      return events.map(event => {
+        console.log("Event from DB:", event.id, "is_full_day:", event.is_full_day); // Debug log
+        return {
+          id: event.id,
+          title: event.title,
+          summary: event.summary,
+          start: event.start_date,
+          end: event.end_date,
+          start_date: event.start_date,
+          end_date: event.end_date,
+          isFullDay: event.is_full_day === 1, // Conversion explicite et stricte
+          created_at: event.created_at
+        };
+      });
     } catch (error) {
       console.error('Error getting events:', error);
       return [];
@@ -111,12 +114,13 @@ class DatabaseService {
   }
 
   async updateEvent(id: string, event: { title: string; summary?: string; start: string; end: string; isFullDay?: boolean }): Promise<void> {
+    console.log("Updating event with isFullDay:", event.isFullDay); // Debug log
     try {
       await this.db.runAsync(
-      'UPDATE events SET title = ?, summary = ?, start_date = ?, end_date = ?, is_full_day = ? WHERE id = ?',
-      [event.title, event.summary || null, event.start, event.end, event.isFullDay ? 1 : 0, id]
+        'UPDATE events SET title = ?, summary = ?, start_date = ?, end_date = ?, is_full_day = ? WHERE id = ?',
+        [event.title, event.summary || null, event.start, event.end, event.isFullDay ? 1 : 0, id]
       );
-      console.log(`✏️ Event ${id} updated successfully`);
+      console.log('✅ Event updated successfully');
       await this.displayTableContent();
     } catch (error) {
       console.error('Error updating event:', error);

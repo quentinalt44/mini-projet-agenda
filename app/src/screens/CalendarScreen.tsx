@@ -16,6 +16,7 @@ import DrawerItem from '../components/DrawerItem';
 import CustomKnob from '../components/CustomKnob';
 import EventModal from '../components/EventModal';
 import EventDetailsModal from '../components/EventDetailsModal';
+import ModalWrapper from '../components/ModalWrapper';
 import styles from '../styles/styles';
 //import { formatDate, formatTime } from '../utils/dateUtils';
 
@@ -29,6 +30,7 @@ interface TimelineEvent {
   end: string;
   title: string;
   summary?: string;
+  isFullDay?: boolean;
 }
 
 type ViewType = 'day' | 'week' | 'month';
@@ -67,7 +69,12 @@ interface AgendaItem extends Event {
 interface AgendaItems {
   [key: string]: AgendaItem[];
 }
-const CalendarScreen = () => {
+
+interface CalendarScreenProps {
+  onSettingsPress: () => void;
+}
+
+const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
   const calendarRef = useRef<any>(null);
   const today = new Date();
   const todayString = today.toISOString().split('T')[0];
@@ -120,6 +127,7 @@ const CalendarScreen = () => {
 
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
+  const [modalKey, setModalKey] = useState(Date.now());
 
   useEffect(() => {
     loadEvents();
@@ -134,7 +142,8 @@ const CalendarScreen = () => {
           start: event.start_date,
           end: event.end_date,
           title: event.title,
-          summary: event.summary
+          summary: event.summary,
+          isFullDay: event.isFullDay // Ajoutez cette ligne
         }));
         setEvents(formattedEvents);
       } else {
@@ -328,7 +337,8 @@ const CalendarScreen = () => {
           height: 50,
           summary: event.summary,
           start: event.start,
-          end: event.end
+          end: event.end,
+          isFullDay: event.isFullDay // Ajoutez cette ligne
         });
         
         // Move to next day
@@ -421,24 +431,27 @@ const CalendarScreen = () => {
     
     // Update times while keeping previously selected hours
     const newStartTime = new Date(selectedDateObj);
-    newStartTime.setHours(
-      selectedStartTime.getHours(),
-      selectedStartTime.getMinutes(),
-      0,
-      0
-    );
+    newStartTime.setHours(9, 0, 0, 0);
     setSelectedStartTime(newStartTime);
   
     const newEndTime = new Date(selectedDateObj);
-    newEndTime.setHours(
-      selectedEndTime.getHours(),
-      selectedEndTime.getMinutes(),
-      0,
-      0
-    );
+    newEndTime.setHours(10, 0, 0, 0);
     setSelectedEndTime(newEndTime);
   
-    setModalMode('create'); // Set mode to create
+    // Utiliser un nouvel objet complètement différent
+    const freshEvent = {
+      id: undefined,
+      title: '',
+      summary: '',
+      start: newStartTime.toISOString(),
+      end: newEndTime.toISOString(),
+      isFullDay: false
+    };
+    
+    console.log("Creating new event with isFullDay:", freshEvent.isFullDay);
+    setNewEvent(freshEvent);
+    setModalMode('create');
+    setModalKey(Date.now()); // Générer une nouvelle clé
     setIsModalVisible(true);
   };
 
@@ -469,7 +482,9 @@ const CalendarScreen = () => {
 
   const handleEditEvent = () => {
     if (!selectedEvent) return;
-  
+    
+    console.log("Editing event with isFullDay:", selectedEvent.isFullDay); // Debug log
+    
     const startDate = new Date(selectedEvent.start);
     const endDate = new Date(selectedEvent.end);
   
@@ -481,10 +496,12 @@ const CalendarScreen = () => {
       title: selectedEvent.title,
       summary: selectedEvent.summary || '',
       start: selectedEvent.start,
-      end: selectedEvent.end
+      end: selectedEvent.end,
+      isFullDay: Boolean(selectedEvent.isFullDay) // Forcer la conversion en booléen
     });
   
-    setModalMode('edit'); // Set mode to edit
+    setModalMode('edit');
+    setModalKey(Date.now()); // Générer une nouvelle clé
     setIsDetailsModalVisible(false);
     setIsModalVisible(true);
   };
@@ -573,7 +590,7 @@ const CalendarScreen = () => {
           <TouchableOpacity style={styles.todayButton} onPress={handleTodayPress}>
             <Text style={styles.todayButtonText}>{todayDay}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.settingsButton}>
+          <TouchableOpacity style={styles.settingsButton} onPress={onSettingsPress}>
             <Ionicons name="settings-outline" size={24} color="#5f6368" />
           </TouchableOpacity>
         </View>
@@ -589,10 +606,12 @@ const CalendarScreen = () => {
       </TouchableOpacity>
 
       {/* Modal principal */}
-      <EventModal
+      <ModalWrapper
+        key={`modal-${modalMode}-${isModalVisible ? 1 : 0}-${modalKey}`} // Utilise modalKey de state
         isVisible={isModalVisible}
-        mode={modalMode} // Use modalMode instead of checking newEvent.id
-        newEvent={newEvent}
+        mode={modalMode}
+        modalMode={modalMode} // Add the required modalMode prop
+        newEvent={{...newEvent, isFullDay: newEvent.isFullDay || false, summary: newEvent.summary || ''}} // Ensure isFullDay is always boolean and summary is always a string
         setNewEvent={setNewEvent}
         handleAddNewEvent={handleAddNewEvent}
         setIsModalVisible={setIsModalVisible}
@@ -613,7 +632,8 @@ const CalendarScreen = () => {
           title: selectedEvent?.title || '',
           summary: selectedEvent?.summary,
           start: selectedEvent?.start || new Date().toISOString(),
-          end: selectedEvent?.end || new Date().toISOString()
+          end: selectedEvent?.end || new Date().toISOString(),
+          isFullDay: selectedEvent?.isFullDay
         }}
         onClose={() => setIsDetailsModalVisible(false)}
         onEdit={handleEditEvent}

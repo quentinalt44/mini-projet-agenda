@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Platform, Switch } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -7,10 +7,9 @@ interface EventModalProps {
   mode: 'create' | 'edit';
   newEvent: {
     title: string;
-    summary?: string;
-    start: string;
-    end: string;
-    isFullDay?: boolean;
+    isFullDay: boolean;
+    summary: string;
+    [key: string]: any;
   };
   setNewEvent: (event: any) => void;
   handleAddNewEvent: () => void;
@@ -18,16 +17,15 @@ interface EventModalProps {
   selectedStartTime: Date;
   selectedEndTime: Date;
   selectedEventDate: Date;
-  showPicker: (type: 'date' | 'start' | 'end' | 'start_date' | 'start_time' | 'end_date' | 'end_time') => void;
-  currentPicker: {
+  showPicker: (pickerType: 'date' | 'start_date' | 'start_time' | 'end_date' | 'end_time' | 'start' | 'end') => void;  currentPicker: {
     show: boolean;
-    mode: 'date' | 'time';
-    current: 'date' | 'start' | 'end' | 'start_date' | 'start_time' | 'end_date' | 'end_time';
+    current?: string;
   };
   setCurrentPicker: (picker: any) => void;
-  handlePickerChange: (event: any, selected?: Date) => void;
+  handlePickerChange: (event: any, selectedDate?: Date) => void;
 }
 
+// SOLUTION RADICALE: Un composant entièrement nouveau à chaque fois
 const EventModal: React.FC<EventModalProps> = ({
   isVisible,
   mode,
@@ -43,6 +41,24 @@ const EventModal: React.FC<EventModalProps> = ({
   setCurrentPicker,
   handlePickerChange,
 }) => {
+  // On recrée des méthodes complètement neuves à chaque render
+  const handleSwitchToggle = (value: boolean) => {
+    console.log("SWITCH TOGGLED TO:", value);
+    // Utiliser directement setNewEvent sans état intermédiaire
+    setNewEvent({
+      ...newEvent,
+      isFullDay: value  // Mise à jour explicite
+    });
+  };
+  
+  // Affichage pour déboguer
+  console.log(`MODAL RENDER - ID: ${newEvent.id || 'new'}, isFullDay: ${newEvent.isFullDay}`);
+  
+  // Conversion explicite pour le switch
+  const switchValue = newEvent.isFullDay === true;
+  
+  // Reste des fonctions et du rendu...
+
   const formatTime = (date: Date) => {
     if (!(date instanceof Date) || isNaN(date.getTime())) {
       return "Sélectionner";
@@ -82,21 +98,23 @@ const EventModal: React.FC<EventModalProps> = ({
             onChangeText={(text) => setNewEvent({ ...newEvent, title: text })}
           />
 
-          <View style={styles.switchContainer}>
+          {/* Clé unique pour le container du switch */}
+          <View style={styles.switchContainer} key={`switch-container-${newEvent.id || 'new'}-${mode}-${switchValue}`}>
             <Text style={styles.switchLabel}>Journée entière</Text>
+            {/* Switch avec sa propre clé et valeur strictement typée */}
             <Switch
+              key={`switch-${newEvent.id || 'new'}-${mode}`}
               trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={newEvent.isFullDay ? "#f5dd4b" : "#f4f3f4"}
+              thumbColor={switchValue ? "#f5dd4b" : "#f4f3f4"}
               ios_backgroundColor="#3e3e3e"
-              onValueChange={(value) => {
-                console.log('Switch value changed to:', value); // Pour debug
-                setNewEvent({ ...newEvent, isFullDay: value });
-              }}
-              value={Boolean(newEvent.isFullDay)}
+              onValueChange={handleSwitchToggle}
+              value={switchValue}
             />
           </View>
 
+          {/* Reste du contenu... */}
           <View style={styles.dateTimeContainer}>
+            {/* ... */}
             <View style={styles.dateTimeSection}>
               <Text style={styles.sectionLabel}>Début</Text>
               <TouchableOpacity
@@ -161,42 +179,41 @@ const EventModal: React.FC<EventModalProps> = ({
               <Text style={styles.buttonText}>Enregistrer</Text>
             </TouchableOpacity>
           </View>
-
-          {currentPicker.show && (
-            <Modal
-              animationType="fade"
-              transparent={true}
-              visible={currentPicker.show}
-            >
-              <View style={styles.pickerModalContainer}>
-                <View style={styles.pickerModalContent}>
-                  <DateTimePicker
-                    value={
-                      currentPicker.current.startsWith('start') 
-                        ? selectedStartTime 
-                        : selectedEndTime
-                    }
-                    mode={currentPicker.current.endsWith('date') ? 'date' : 'time'}
-                    is24Hour={true}
-                    display="spinner"
-                    onChange={handlePickerChange}
-                    locale="fr-FR"
-                    themeVariant="light"
-                  />
-                  <TouchableOpacity
-                    style={styles.pickerCloseButton}
-                    onPress={() => {
-                      setCurrentPicker({ ...currentPicker, show: false });
-                    }}
-                  >
-                    <Text style={styles.pickerCloseButtonText}>Valider</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </Modal>
-          )}
         </View>
       </View>
+
+      {currentPicker?.show && (
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={currentPicker.show}
+        >
+          <View style={styles.pickerModalContainer}>
+            <View style={styles.pickerModalContent}>
+              <DateTimePicker
+                value={
+                  currentPicker.current?.startsWith('start') 
+                    ? selectedStartTime 
+                    : selectedEndTime
+                }
+                mode={currentPicker.current?.endsWith('date') ? 'date' : 'time'}
+                is24Hour={true}
+                display="spinner"
+                onChange={handlePickerChange}
+                locale="fr-FR"
+              />
+              <TouchableOpacity
+                style={styles.pickerCloseButton}
+                onPress={() => {
+                  setCurrentPicker({ ...currentPicker, show: false });
+                }}
+              >
+                <Text style={styles.pickerCloseButtonText}>Valider</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
     </Modal>
   );
 };
