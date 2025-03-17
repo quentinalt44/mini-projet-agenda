@@ -25,7 +25,6 @@ interface EventModalProps {
   handlePickerChange: (event: any, selectedDate?: Date) => void;
 }
 
-// SOLUTION RADICALE: Un composant entièrement nouveau à chaque fois
 const EventModal: React.FC<EventModalProps> = ({
   isVisible,
   mode,
@@ -41,24 +40,28 @@ const EventModal: React.FC<EventModalProps> = ({
   setCurrentPicker,
   handlePickerChange,
 }) => {
-  // On recrée des méthodes complètement neuves à chaque render
-  const handleSwitchToggle = (value: boolean) => {
-    console.log("SWITCH TOGGLED TO:", value);
-    // Utiliser directement setNewEvent sans état intermédiaire
+  // État complètement indépendant pour le toggle
+  const [isFullDayToggle, setIsFullDayToggle] = useState(false);
+  
+  // Initialiser l'état local au montage et quand newEvent ou isVisible change
+  useEffect(() => {
+    if (isVisible) {
+      console.log("Modal visible, initializing toggle with:", newEvent.isFullDay);
+      setIsFullDayToggle(Boolean(newEvent.isFullDay));
+    }
+  }, [isVisible, newEvent.id]);
+
+  const handleToggleChange = (value: boolean) => {
+    console.log("Toggle changed to:", value);
+    setIsFullDayToggle(value);
+    // Mise à jour immédiate de l'état parent
     setNewEvent({
       ...newEvent,
-      isFullDay: value  // Mise à jour explicite
+      isFullDay: value
     });
   };
-  
-  // Affichage pour déboguer
-  console.log(`MODAL RENDER - ID: ${newEvent.id || 'new'}, isFullDay: ${newEvent.isFullDay}`);
-  
-  // Conversion explicite pour le switch
-  const switchValue = newEvent.isFullDay === true;
-  
-  // Reste des fonctions et du rendu...
 
+  // Formatage de l'heure
   const formatTime = (date: Date) => {
     if (!(date instanceof Date) || isNaN(date.getTime())) {
       return "Sélectionner";
@@ -70,6 +73,7 @@ const EventModal: React.FC<EventModalProps> = ({
     });
   };
 
+  // Formatage de la date
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('fr-FR', { 
       year: 'numeric', 
@@ -98,23 +102,20 @@ const EventModal: React.FC<EventModalProps> = ({
             onChangeText={(text) => setNewEvent({ ...newEvent, title: text })}
           />
 
-          {/* Clé unique pour le container du switch */}
-          <View style={styles.switchContainer} key={`switch-container-${newEvent.id || 'new'}-${mode}-${switchValue}`}>
+          {/* Switch contrôlé UNIQUEMENT par l'état local */}
+          <View style={styles.switchContainer} key={`switch-container-${newEvent.id || 'new'}-${mode}-${isFullDayToggle}`}>
             <Text style={styles.switchLabel}>Journée entière</Text>
-            {/* Switch avec sa propre clé et valeur strictement typée */}
             <Switch
               key={`switch-${newEvent.id || 'new'}-${mode}`}
               trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={switchValue ? "#f5dd4b" : "#f4f3f4"}
+              thumbColor={isFullDayToggle ? "#f5dd4b" : "#f4f3f4"}
               ios_backgroundColor="#3e3e3e"
-              onValueChange={handleSwitchToggle}
-              value={switchValue}
+              onValueChange={handleToggleChange}
+              value={isFullDayToggle}
             />
           </View>
 
-          {/* Reste du contenu... */}
           <View style={styles.dateTimeContainer}>
-            {/* ... */}
             <View style={styles.dateTimeSection}>
               <Text style={styles.sectionLabel}>Début</Text>
               <TouchableOpacity

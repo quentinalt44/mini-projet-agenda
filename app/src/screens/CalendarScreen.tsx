@@ -480,28 +480,35 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
     }
   };
 
-  const handleEditEvent = () => {
+  const handleEditEvent = async () => {
     if (!selectedEvent) return;
     
-    console.log("Editing event with isFullDay:", selectedEvent.isFullDay); // Debug log
+    // Rechargez les événements pour être sûr d'avoir les dernières valeurs
+    await loadEvents();
     
-    const startDate = new Date(selectedEvent.start);
-    const endDate = new Date(selectedEvent.end);
+    // Trouvez l'événement actuel par son ID pour avoir les données les plus récentes
+    const currentEvent = events.find(e => e.id === selectedEvent.id);
+    if (!currentEvent) return;
+    
+    console.log("Editing event with actual isFullDay:", currentEvent.isFullDay);
+    
+    const startDate = new Date(currentEvent.start);
+    const endDate = new Date(currentEvent.end);
   
     setSelectedEventDate(startDate);
     setSelectedStartTime(startDate);
     setSelectedEndTime(endDate);
     setNewEvent({
-      id: selectedEvent.id,
-      title: selectedEvent.title,
-      summary: selectedEvent.summary || '',
-      start: selectedEvent.start,
-      end: selectedEvent.end,
-      isFullDay: Boolean(selectedEvent.isFullDay) // Forcer la conversion en booléen
+      id: currentEvent.id,
+      title: currentEvent.title,
+      summary: currentEvent.summary || '',
+      start: currentEvent.start,
+      end: currentEvent.end,
+      isFullDay: Boolean(currentEvent.isFullDay)
     });
   
     setModalMode('edit');
-    setModalKey(Date.now()); // Générer une nouvelle clé
+    setModalKey(Date.now());
     setIsDetailsModalVisible(false);
     setIsModalVisible(true);
   };
