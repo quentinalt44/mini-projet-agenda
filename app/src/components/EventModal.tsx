@@ -172,14 +172,16 @@ const EventModal: React.FC<EventModalProps> = ({
                   {formatDate(selectedStartTime)}
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => showPicker('start_time')}
-              >
-                <Text style={styles.pickerButtonText}>
-                  {formatTime(selectedStartTime)}
-                </Text>
-              </TouchableOpacity>
+              {!newEvent.isFullDay && (
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => showPicker('start_time')}
+                >
+                  <Text style={styles.pickerButtonText}>
+                    {formatTime(selectedStartTime)}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={styles.dateTimeSection}>
@@ -192,14 +194,16 @@ const EventModal: React.FC<EventModalProps> = ({
                   {formatDate(selectedEndTime)}
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => showPicker('end_time')}
-              >
-                <Text style={styles.pickerButtonText}>
-                  {formatTime(selectedEndTime)}
-                </Text>
-              </TouchableOpacity>
+              {!newEvent.isFullDay && (
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => showPicker('end_time')}
+                >
+                  <Text style={styles.pickerButtonText}>
+                    {formatTime(selectedEndTime)}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
