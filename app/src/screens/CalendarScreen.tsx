@@ -544,24 +544,38 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
               const category = EVENT_CATEGORIES.find(cat => cat.id === (item.category || 'default'));
               const categoryColor = category?.color || '#1a73e8';
               
-              // Calculer le badge de jour pour les événements multi-jours
-              let dayBadge = null;
+              // Générer le badge pour les événements
+              let badge = null;
+              
               if (item.isFullDay) {
+                // Badge pour les événements journée entière
                 try {
-                  // Calculer le nombre total de jours de l'événement
                   const startDate = new Date(item.start.split('T')[0]);
                   const endDate = new Date(item.end.split('T')[0]);
                   const currentDate = new Date(selectedDate);
                   
-                  // Nombre de jours entre début et fin (inclusive)
                   const totalDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                  
-                  // Toujours afficher le badge pour les événements journée entière,
-                  // même pour ceux qui ne durent qu'un seul jour
                   const currentDayNumber = Math.floor((currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                  dayBadge = `Jour ${currentDayNumber}/${totalDays}`;
+                  
+                  badge = `Jour ${currentDayNumber}/${totalDays}`;
                 } catch (error) {
                   console.error("Erreur lors du calcul du badge de jour:", error);
+                }
+              } else {
+                // Badge pour les événements classiques: horaires de début et fin
+                try {
+                  const startDate = new Date(item.start);
+                  const endDate = new Date(item.end);
+                  
+                  // Formatter les heures au format 24h: HH:MM
+                  const startHour = startDate.getHours().toString().padStart(2, '0');
+                  const startMin = startDate.getMinutes().toString().padStart(2, '0');
+                  const endHour = endDate.getHours().toString().padStart(2, '0');
+                  const endMin = endDate.getMinutes().toString().padStart(2, '0');
+                  
+                  badge = `${startHour}:${startMin} - ${endHour}:${endMin}`;
+                } catch (error) {
+                  console.error("Erreur lors de la formation des heures:", error);
                 }
               }
               
@@ -591,20 +605,36 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
                 ? [styles.agendaItemSummary, { color: '#ffffff', opacity: 0.9 }]
                 : styles.agendaItemSummary;
               
-              const badgeStyle = {
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                borderRadius: 10,
-                marginLeft: 8,
-                alignSelf: 'flex-start' as 'flex-start'
-              };
+              // Style du badge différent selon le type d'événement
+              const badgeStyle = item.isFullDay
+                ? {
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    borderRadius: 10,
+                    marginLeft: 8,
+                    alignSelf: 'flex-start' as 'flex-start'
+                  }
+                : {
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                    backgroundColor: '#f1f3f4',
+                    borderRadius: 10,
+                    marginLeft: 8,
+                    alignSelf: 'flex-start' as 'flex-start'
+                  };
               
-              const badgeTextStyle = {
-                color: '#ffffff',
-                fontSize: 10,
-                fontWeight: 'bold' as 'bold'
-              };
+              const badgeTextStyle = item.isFullDay
+                ? {
+                    color: '#ffffff',
+                    fontSize: 10,
+                    fontWeight: 'bold' as 'bold'
+                  }
+                : {
+                    color: '#5f6368',
+                    fontSize: 10,
+                    fontWeight: 'bold' as 'bold'
+                  };
               
               return (
                 <TouchableOpacity 
@@ -613,9 +643,9 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Text style={titleStyle}>{item.title}</Text>
-                    {dayBadge && (
+                    {badge && (
                       <View style={badgeStyle}>
-                        <Text style={badgeTextStyle}>{dayBadge}</Text>
+                        <Text style={badgeTextStyle}>{badge}</Text>
                       </View>
                     )}
                   </View>
