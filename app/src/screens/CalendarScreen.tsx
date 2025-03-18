@@ -255,11 +255,7 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
         console.log("✅ Event added successfully");
       }
   
-      await loadEvents();
-      
-      // Ajouter cette ligne pour forcer un rafraîchissement de l'agenda
-      setSelectedDate(selectedDate + ''); // Créer une nouvelle référence de la chaîne
-      
+      // Fermer la modal avant le rafraîchissement
       setIsModalVisible(false);
       setNewEvent({
         title: '',
@@ -268,6 +264,9 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
         end: new Date().toISOString(),
         isFullDay: false
       });
+      
+      // Utiliser la nouvelle fonction de rafraîchissement
+      await forceCalendarRefresh();
     } catch (error) {
       console.error('Error saving event:', error);
     }
@@ -765,49 +764,99 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
     
     try {
       await databaseService.deleteEvent(Number(selectedEvent.id));
-      await loadEvents();
+      
+      // Fermer la modal de détails
       setIsDetailsModalVisible(false);
+      
+      // Utiliser la nouvelle fonction de rafraîchissement
+      await forceCalendarRefresh();
     } catch (error) {
       console.error('Error deleting event:', error);
     }
   };
 
-  const handleEditEvent = async () => {
-    if (!selectedEvent) return;
-    
-    // Rechargez les événements pour être sûr d'avoir les dernières valeurs
-    await loadEvents();
-    
-    // Trouvez l'événement actuel par son ID pour avoir les données les plus récentes
-    const currentEvent = events.find(e => e.id === selectedEvent.id);
-    if (!currentEvent) return;
-    
-    console.log("Editing event with actual isFullDay:", currentEvent.isFullDay);
-    
-    const startDate = new Date(currentEvent.start);
-    const endDate = new Date(currentEvent.end);
+  // Remplacez complètement la fonction handleEditEvent par cette version
+const handleEditEvent = () => {
+  if (!selectedEvent) return;
   
-    setSelectedEventDate(startDate);
-    setSelectedStartTime(startDate);
-    setSelectedEndTime(endDate);
-    setNewEvent({
-      id: currentEvent.id,
-      title: currentEvent.title,
-      summary: currentEvent.summary || '',
-      start: currentEvent.start,
-      end: currentEvent.end,
-      isFullDay: Boolean(currentEvent.isFullDay),
-      category: currentEvent.category // Ajouter cette ligne
-    });
+  // Préparer les dates
+  let startTime = new Date(selectedEvent.start);
+  let endTime = new Date(selectedEvent.end);
   
-    setModalMode('edit');
-    setModalKey(Date.now());
-    setIsDetailsModalVisible(false);
-    setIsModalVisible(true);
+  // Mettre à jour les sélecteurs de temps
+  setSelectedStartTime(startTime);
+  setSelectedEndTime(endTime);
+  
+  // Préparer l'événement pour l'édition
+  const eventToEdit = {
+    id: selectedEvent.id,
+    title: selectedEvent.title || '',
+    summary: selectedEvent.summary || '',
+    start: selectedEvent.start,
+    end: selectedEvent.end,
+    isFullDay: selectedEvent.isFullDay || false,
+    category: selectedEvent.category || 'default'
   };
+  
+  // Mettre à jour l'état newEvent
+  setNewEvent(eventToEdit);
+  
+  // Changer le mode du modal
+  setModalMode('edit');
+  
+  // Générer une nouvelle clé pour forcer le rendu du modal
+  setModalKey(Date.now());
+  
+  // Fermer le modal de détails et ouvrir le modal d'édition
+  setIsDetailsModalVisible(false);
+  setIsModalVisible(true);
+};
 
   const isValidEventTimes = () => {
     return selectedEndTime > selectedStartTime;
+  };
+
+  // Ajoutez cette nouvelle fonction dans votre composant CalendarScreen
+  const forceCalendarRefresh = async () => {
+    // 1. D'abord recharger les données
+    await loadEvents();
+    
+    // 2. Créer une nouvelle référence de la chaîne de date
+    const currentDate = selectedDate;
+    
+    // 3. Utiliser plusieurs techniques combinées pour forcer le rafraîchissement
+    setTimeout(() => {
+      try {
+        // Technique 1: Mettre à jour directement les items via la référence
+        if (calendarRef.current && calendarRef.current.updateItems) {
+          const items = loadItemsForMonth({ dateString: currentDate });
+          calendarRef.current.updateItems(items);
+        }
+        
+        // Technique 2: Changer temporairement de date puis revenir
+        const tempDate = new Date(currentDate);
+        tempDate.setDate(tempDate.getDate() + 1);
+        const nextDay = tempDate.toISOString().split('T')[0];
+        
+        setSelectedDate(nextDay);
+        
+        // Technique 3: Revenir à la date d'origine après un court délai
+        setTimeout(() => {
+          setSelectedDate(currentDate);
+          
+          // Technique 4: Mettre à jour les dates marquées
+          setMarkedDates({
+            [currentDate]: {
+              selected: true,
+              selectedColor: '#1a73e8',
+              marked: false
+            }
+          });
+        }, 50);
+      } catch (error) {
+        console.error("Erreur pendant le rafraîchissement du calendrier:", error);
+      }
+    }, 100);
   };
 
   return (
