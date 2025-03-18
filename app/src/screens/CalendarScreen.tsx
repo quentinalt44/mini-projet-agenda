@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { databaseService } from '../database/DatabaseService';
-import { Agenda, Timeline, WeekCalendar } from 'react-native-calendars';
+import { Agenda, Timeline, WeekCalendar, LocaleConfig } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import DrawerItem from '../components/DrawerItem';
 import CustomKnob from '../components/CustomKnob';
@@ -19,6 +19,21 @@ import EventDetailsModal from '../components/EventDetailsModal';
 import ModalWrapper from '../components/ModalWrapper';
 import styles from '../styles/styles';
 //import { formatDate, formatTime } from '../utils/dateUtils';
+
+// Configuration de la localisation en français
+LocaleConfig.locales['fr'] = {
+  monthNames: [
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+  ],
+  monthNamesShort: ['Janv.', 'Févr.', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'],
+  dayNames: ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
+  dayNamesShort: ['Dim.', 'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.'],
+  today: "Aujourd'hui"
+};
+
+// Définir le français comme langue par défaut
+LocaleConfig.defaultLocale = 'fr';
 
 interface CalendarDay {
   dateString: string;
