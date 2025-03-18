@@ -544,6 +544,27 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
               const category = EVENT_CATEGORIES.find(cat => cat.id === (item.category || 'default'));
               const categoryColor = category?.color || '#1a73e8';
               
+              // Calculer le badge de jour pour les événements multi-jours
+              let dayBadge = null;
+              if (item.isFullDay) {
+                try {
+                  // Calculer le nombre total de jours de l'événement
+                  const startDate = new Date(item.start.split('T')[0]);
+                  const endDate = new Date(item.end.split('T')[0]);
+                  const currentDate = new Date(selectedDate);
+                  
+                  // Nombre de jours entre début et fin (inclusive)
+                  const totalDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                  
+                  // Toujours afficher le badge pour les événements journée entière,
+                  // même pour ceux qui ne durent qu'un seul jour
+                  const currentDayNumber = Math.floor((currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                  dayBadge = `Jour ${currentDayNumber}/${totalDays}`;
+                } catch (error) {
+                  console.error("Erreur lors du calcul du badge de jour:", error);
+                }
+              }
+              
               // Style différent selon que l'événement est sur la journée entière ou non
               const itemStyle = item.isFullDay 
                 ? [
@@ -570,12 +591,34 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
                 ? [styles.agendaItemSummary, { color: '#ffffff', opacity: 0.9 }]
                 : styles.agendaItemSummary;
               
+              const badgeStyle = {
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                borderRadius: 10,
+                marginLeft: 8,
+                alignSelf: 'flex-start' as 'flex-start'
+              };
+              
+              const badgeTextStyle = {
+                color: '#ffffff',
+                fontSize: 10,
+                fontWeight: 'bold' as 'bold'
+              };
+              
               return (
                 <TouchableOpacity 
                   style={itemStyle}
                   onPress={() => handleEventPress(item)}
                 >
-                  <Text style={titleStyle}>{item.title}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={titleStyle}>{item.title}</Text>
+                    {dayBadge && (
+                      <View style={badgeStyle}>
+                        <Text style={badgeTextStyle}>{dayBadge}</Text>
+                      </View>
+                    )}
+                  </View>
                   {item.summary && (
                     <Text style={summaryStyle}>{item.summary}</Text>
                   )}
