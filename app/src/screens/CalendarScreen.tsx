@@ -20,6 +20,16 @@ import ModalWrapper from '../components/ModalWrapper';
 import styles from '../styles/styles';
 //import { formatDate, formatTime } from '../utils/dateUtils';
 
+// Define event categories with their colors
+const EVENT_CATEGORIES = [
+  { id: 'default', color: '#1a73e8', name: 'Par défaut' },
+  { id: 'work', color: '#d50000', name: 'Travail' },
+  { id: 'personal', color: '#33b679', name: 'Personnel' },
+  { id: 'family', color: '#f6bf26', name: 'Famille' },
+  { id: 'health', color: '#8e24aa', name: 'Santé' },
+  { id: 'other', color: '#616161', name: 'Autre' }
+];
+
 // Configuration de la localisation en français
 LocaleConfig.locales['fr'] = {
   monthNames: [
@@ -46,6 +56,7 @@ interface TimelineEvent {
   title: string;
   summary?: string;
   isFullDay?: boolean;
+  category?: string;
 }
 
 type ViewType = 'day' | 'week' | 'month';
@@ -59,6 +70,7 @@ interface Event {
   isFullDay?: boolean;
   start_date?: string;
   end_date?: string;
+  category?: string;
 }
 
 interface EventUpdateData {
@@ -158,7 +170,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
           end: event.end_date,
           title: event.title,
           summary: event.summary,
-          isFullDay: event.isFullDay // Ajoutez cette ligne
+          isFullDay: event.isFullDay,
+          category: event.category // Ajouter cette ligne manquante
         }));
         setEvents(formattedEvents);
       } else {
@@ -220,10 +233,11 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
       summary: newEvent.summary,
       start_date: startDateISO,
       end_date: endDateISO,
-      isFullDay: newEvent.isFullDay
+      isFullDay: newEvent.isFullDay,
+      category: newEvent.category || 'default' // Assurez-vous que la catégorie est envoyée
     };
   
-    console.log(`Adding event with full day: ${newEvent.isFullDay}`);
+    console.log(`Adding event with full day: ${newEvent.isFullDay}, category: ${newEvent.category || 'default'}`);
   
     try {
       if (newEvent.id) {
@@ -232,7 +246,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
           summary: eventData.summary,
           start: eventData.start_date,
           end: eventData.end_date,
-          isFullDay: eventData.isFullDay
+          isFullDay: eventData.isFullDay,
+          category: eventData.category // Ajouter cette ligne
         });
         console.log("✅ Event updated successfully");
       } else {
@@ -241,6 +256,10 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
       }
   
       await loadEvents();
+      
+      // Ajouter cette ligne pour forcer un rafraîchissement de l'agenda
+      setSelectedDate(selectedDate + ''); // Créer une nouvelle référence de la chaîne
+      
       setIsModalVisible(false);
       setNewEvent({
         title: '',
@@ -427,7 +446,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
               summary: event.summary,
               start: event.start,
               end: event.end,
-              isFullDay: event.isFullDay
+              isFullDay: event.isFullDay,
+              category: event.category // Ajouter la catégorie
             });
             
             // Passer au jour suivant
@@ -463,10 +483,11 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
               summary: event.summary,
               start: event.start,
               end: event.end,
-              isFullDay: event.isFullDay
+              isFullDay: event.isFullDay,
+              category: event.category  // Ajout de cette ligne qui manquait
             });
             
-            // Passer au jour suivant (cette ligne est importante!)
+            // Passer au jour suivant
             currentDate.setDate(currentDate.getDate() + 1);
           }
         }
@@ -513,19 +534,33 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
               </View>
             )}
             rowHasChanged={(r1: AgendaItem, r2: AgendaItem) => {
-              return r1.title !== r2.title;
+              // Comparer à la fois le titre et la catégorie pour détecter les changements
+              return r1.title !== r2.title || r1.category !== r2.category;
             }}
-            renderItem={(item: AgendaItem) => (
-              <TouchableOpacity 
-                style={styles.agendaItem}
-                onPress={() => handleEventPress(item)}
-              >
-                <Text style={styles.agendaItemTitle}>{item.title}</Text>
-                {item.summary && (
-                  <Text style={styles.agendaItemSummary}>{item.summary}</Text>
-                )}
-              </TouchableOpacity>
-            )}
+            renderItem={(item: AgendaItem) => {
+              // Log de débogage pour voir la catégorie et la couleur utilisée
+              console.log(`Renderisation de l'item ${item.title}, catégorie: ${item.category}`);
+              
+              const category = EVENT_CATEGORIES.find(cat => cat.id === (item.category || 'default'));
+              const categoryColor = category?.color || '#1a73e8';
+              
+              console.log(`Couleur choisie: ${categoryColor}, catégorie trouvée: ${category?.name || 'Inconnue'}`);
+              
+              return (
+                <TouchableOpacity 
+                  style={[
+                    styles.agendaItem,
+                    { borderLeftWidth: 4, borderLeftColor: categoryColor }
+                  ]}
+                  onPress={() => handleEventPress(item)}
+                >
+                  <Text style={styles.agendaItemTitle}>{item.title}</Text>
+                  {item.summary && (
+                    <Text style={styles.agendaItemSummary}>{item.summary}</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            }}
             theme={{
               ...theme, // Gardez les thèmes existants
               agendaDayTextColor: '#2d4150',
@@ -633,7 +668,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
       summary: currentEvent.summary || '',
       start: currentEvent.start,
       end: currentEvent.end,
-      isFullDay: Boolean(currentEvent.isFullDay)
+      isFullDay: Boolean(currentEvent.isFullDay),
+      category: currentEvent.category // Ajouter cette ligne
     });
   
     setModalMode('edit');
@@ -771,7 +807,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
           summary: selectedEvent?.summary,
           start: selectedEvent?.start || new Date().toISOString(),
           end: selectedEvent?.end || new Date().toISOString(),
-          isFullDay: selectedEvent?.isFullDay
+          isFullDay: selectedEvent?.isFullDay,
+          category: selectedEvent?.category // Ajouter cette ligne
         }}
         onClose={() => setIsDetailsModalVisible(false)}
         onEdit={handleEditEvent}

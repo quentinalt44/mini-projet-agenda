@@ -2,20 +2,32 @@ import React from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+// Importer les catégories d'événements (assurez-vous que cette constante est définie ici ou importée)
+const EVENT_CATEGORIES = [
+  { id: 'default', label: 'Par défaut', color: '#1a73e8' },
+  { id: 'work', label: 'Travail', color: '#d50000' },
+  { id: 'personal', label: 'Personnel', color: '#33b679' },
+  { id: 'family', label: 'Famille', color: '#f6bf26' },
+  { id: 'health', label: 'Santé', color: '#8e24aa' },
+  { id: 'other', label: 'Autre', color: '#616161' },
+];
+
+// Mettez à jour l'interface pour inclure la catégorie
 interface EventDetailsModalProps {
-    isVisible: boolean;
-    event: {
-      id?: string;
-      title: string;
-      summary?: string;
-      start: string;
-      end: string;
-      isFullDay?: boolean;
-    };
-    onClose: () => void;
-    onEdit: () => void;
-    onDelete: () => void;
-  }
+  isVisible: boolean;
+  event: {
+    id?: string;
+    title: string;
+    summary?: string;
+    start: string;
+    end: string;
+    isFullDay?: boolean;
+    category?: string; // Ajout de la catégorie
+  };
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}
 
 const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   isVisible,
@@ -24,6 +36,17 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   onEdit,
   onDelete,
 }) => {
+  // Fonction pour obtenir les informations de la catégorie
+  const getCategoryInfo = (categoryId?: string) => {
+    const category = EVENT_CATEGORIES.find(cat => cat.id === (categoryId || 'default'));
+    return {
+      label: category?.label || 'Par défaut',
+      color: category?.color || '#1a73e8'
+    };
+  };
+
+  const categoryInfo = getCategoryInfo(event.category);
+
   const handleDelete = () => {
     Alert.alert(
       "Supprimer l'événement",
@@ -80,6 +103,20 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
             </View>
           </View>
 
+          {/* Ajouter la section catégorie ici */}
+          <View style={styles.categorySection}>
+            <Text style={styles.categoryLabel}>Catégorie:</Text>
+            <View style={styles.categoryBadge}>
+              <View 
+                style={[
+                  styles.categoryColor, 
+                  { backgroundColor: categoryInfo.color }
+                ]} 
+              />
+              <Text style={styles.categoryText}>{categoryInfo.label}</Text>
+            </View>
+          </View>
+
           <View style={styles.dateSection}>
             <Text style={styles.dateLabel}>Début:</Text>
             <Text style={styles.dateText}>{formatDate(event.start)}</Text>
@@ -109,6 +146,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   );
 };
 
+// Ajouter les nouveaux styles pour la catégorie
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
@@ -177,6 +215,28 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '500',
+  },
+  categorySection: {
+    marginBottom: 15,
+  },
+  categoryLabel: {
+    fontSize: 16,
+    color: '#5f6368',
+    marginBottom: 4,
+  },
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  categoryColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  categoryText: {
+    fontSize: 16,
+    color: '#2d4150',
   },
 });
 

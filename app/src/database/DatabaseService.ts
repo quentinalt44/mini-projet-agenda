@@ -11,6 +11,7 @@ interface Event {
   created_at?: string;
   isFullDay?: boolean;
   is_full_day?: number;
+  category?: string;
 }
 
 class DatabaseService {
@@ -23,25 +24,39 @@ class DatabaseService {
 
   private async initDatabase() {
     try {
-      // Supprimer la table si elle existe
-      await this.db.runAsync('DROP TABLE IF EXISTS events');
+      // Créez ou ouvrez la base de données
+      this.db = await SQLite.openDatabaseAsync('calendar.db');
       
-      // Créer la table avec la nouvelle structure
-      await this.db.runAsync(
-        `CREATE TABLE IF NOT EXISTS events (
+      // Créez la table events avec le champ category
+      await this.db.execAsync(`
+        CREATE TABLE IF NOT EXISTS events (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           title TEXT NOT NULL,
           summary TEXT,
           start_date TEXT NOT NULL,
           end_date TEXT NOT NULL,
           is_full_day INTEGER DEFAULT 0,
+          category TEXT DEFAULT 'default',
           created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );`
-      );
-      console.log('📦 Database initialized');
-      await this.displayTableContent();
+        );
+      `);
+      
+      // Si la table existe déjà mais n'a pas le champ category, l'ajouter
+      try {
+        await this.db.execAsync(`
+          ALTER TABLE events ADD COLUMN category TEXT DEFAULT 'default';
+        `);
+      } catch (err) {
+        // Si l'erreur est que la colonne existe déjà, c'est ok, sinon relancer l'erreur
+        if (!String(err).includes('duplicate column')) {
+          throw err;
+        }
+      }
+      
+      console.log("📦 Database initialized");
+      
     } catch (error) {
-      console.error('Error initializing database:', error);
+      console.error("Error initializing database:", error);
     }
   }
 
@@ -54,6 +69,10 @@ class DatabaseService {
       console.log('================================');
       if (result && result.length > 0) {
         result.forEach(event => {
+          // Trouver la catégorie pour l'affichage
+          const category = EVENT_CATEGORIES.find(cat => cat.id === (event.category || 'default'));
+          const categoryLabel = category ? category.label : 'Par défaut';
+          
           console.log(`
               🎯 ID: ${event.id}
               📝 Title: ${event.title}
@@ -61,6 +80,7 @@ class DatabaseService {
               ⏰ Start: ${new Date(event.start_date).toLocaleString()}
               🔚 End: ${new Date(event.end_date).toLocaleString()}
               📆 Full Day: ${Boolean(event.is_full_day) ? 'Yes' : 'No'}
+              🏷️ Category: ${categoryLabel}
               ⏱️ Created: ${event.created_at}
               --------------------------------`);
         });
@@ -77,8 +97,8 @@ class DatabaseService {
     console.log('Adding event with full day:', event.isFullDay); // Pour debug
     try {
       await this.db.runAsync(
-        'INSERT INTO events (title, summary, start_date, end_date, is_full_day) VALUES (?, ?, ?, ?, ?)',
-        [event.title, event.summary || null, event.start_date, event.end_date, event.isFullDay ? 1 : 0]
+        'INSERT INTO events (title, summary, start_date, end_date, is_full_day, category) VALUES (?, ?, ?, ?, ?, ?)',
+        [event.title, event.summary || null, event.start_date, event.end_date, event.isFullDay ? 1 : 0, event.category || 'default']
       );
       console.log('✅ Event added successfully');
       await this.displayTableContent();
@@ -91,7 +111,7 @@ class DatabaseService {
   async getEvents(): Promise<Event[]> {
     try {
       const events = await this.db.getAllAsync<Event>(
-        'SELECT id, title, summary, start_date, end_date, is_full_day, created_at FROM events ORDER BY start_date'
+        'SELECT id, title, summary, start_date, end_date, is_full_day, created_at, category FROM events ORDER BY start_date'
       );
       return events.map(event => {
         console.log("Event from DB:", event.id, "is_full_day:", event.is_full_day); // Debug log
@@ -104,7 +124,8 @@ class DatabaseService {
           start_date: event.start_date,
           end_date: event.end_date,
           isFullDay: event.is_full_day === 1, // Conversion explicite et stricte
-          created_at: event.created_at
+          created_at: event.created_at,
+          category: event.category || 'default' // Ajout de la catégorie
         };
       });
     } catch (error) {
@@ -113,17 +134,42 @@ class DatabaseService {
     }
   }
 
-  async updateEvent(id: string, event: { title: string; summary?: string; start: string; end: string; isFullDay?: boolean }): Promise<void> {
-    console.log("Updating event with isFullDay:", event.isFullDay); // Debug log
+  async updateEvent(id: string, event: { title: string; summary?: string; start: string; end: string; isFullDay?: boolean; category?: string }): Promise<void> {
     try {
+      console.log("⚙️ Mise à jour de l'événement :", id);
+      console.log("📊 Données :", {
+        title: event.title,
+        summary: event.summary,
+        isFullDay: event.isFullDay,
+        category: event.category
+      });
+      
+      // Pour les événements fullday, reformater les dates pour s'assurer qu'elles sont 00:00 et 23:59
+      let startDate = event.start;
+      let endDate = event.end;
+      
+      if (event.isFullDay) {
+        // Reformater les dates pour les événements fullday
+        const startDateParts = event.start.split('T')[0];
+        const endDateParts = event.end.split('T')[0];
+        
+        startDate = `${startDateParts}T00:00:00`;
+        endDate = `${endDateParts}T23:59:00`;
+        
+        console.log("📅 Dates reformatées pour fullday :");
+        console.log("   - Début :", startDate);
+        console.log("   - Fin :", endDate);
+      }
+      
       await this.db.runAsync(
-        'UPDATE events SET title = ?, summary = ?, start_date = ?, end_date = ?, is_full_day = ? WHERE id = ?',
-        [event.title, event.summary || null, event.start, event.end, event.isFullDay ? 1 : 0, id]
+        'UPDATE events SET title = ?, summary = ?, start_date = ?, end_date = ?, is_full_day = ?, category = ? WHERE id = ?',
+        [event.title, event.summary || null, startDate, endDate, event.isFullDay ? 1 : 0, event.category || 'default', id]
       );
-      console.log('✅ Event updated successfully');
+      
+      console.log("✅ Événement mis à jour avec succès");
       await this.displayTableContent();
     } catch (error) {
-      console.error('Error updating event:', error);
+      console.error('Erreur lors de la mise à jour de l\'événement:', error);
       throw error;
     }
   }
@@ -144,3 +190,49 @@ class DatabaseService {
 }
 
 export const databaseService = new DatabaseService();
+
+// Définition des catégories d'événements
+const EVENT_CATEGORIES = [
+  { id: 'default', label: 'Par défaut', color: '#1a73e8' },
+  { id: 'work', label: 'Travail', color: '#d50000' },
+  { id: 'personal', label: 'Personnel', color: '#33b679' },
+  { id: 'family', label: 'Famille', color: '#f6bf26' },
+  { id: 'health', label: 'Santé', color: '#8e24aa' },
+  { id: 'other', label: 'Autre', color: '#616161' },
+];
+
+// Dans la fonction getAllEvents ou dans la fonction qui affiche les logs
+
+// Si vous avez une fonction qui génère les logs comme celle-ci:
+const logEvents = async () => {
+  try {
+    const events = await databaseService.getEvents();
+    console.log("📅 Current Events in Database:");
+    console.log("================================");
+    
+    if (events.length === 0) {
+      console.log("No events in database");
+    } else {
+      events.forEach(event => {
+        // Trouver la catégorie pour l'affichage
+        const category = EVENT_CATEGORIES.find(cat => cat.id === (event.category || 'default'));
+        const categoryLabel = category ? category.label : 'Par défaut';
+        
+        console.log(`
+              🎯 ID: ${event.id}
+              📝 Title: ${event.title}
+              📋 Summary: ${event.summary || 'N/A'}
+              ⏰ Start: ${new Date(event.start_date).toLocaleString()}
+              🔚 End: ${new Date(event.end_date).toLocaleString()}
+              📆 Full Day: ${event.isFullDay ? 'Yes' : 'No'}
+              🏷️ Category: ${categoryLabel}
+              ⏱️ Created: ${event.created_at}
+              --------------------------------`);
+      });
+    }
+    
+    console.log("================================");
+  } catch (error) {
+    console.error("Error logging events:", error);
+  }
+};

@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Platform, Switch } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Picker } from '@react-native-picker/picker';
+
+// Définir les catégories d'événements
+const EVENT_CATEGORIES = [
+  { id: 'default', label: 'Par défaut', color: '#1a73e8' },
+  { id: 'work', label: 'Travail', color: '#d50000' },
+  { id: 'personal', label: 'Personnel', color: '#33b679' },
+  { id: 'family', label: 'Famille', color: '#f6bf26' },
+  { id: 'health', label: 'Santé', color: '#8e24aa' },
+  { id: 'other', label: 'Autre', color: '#616161' },
+];
 
 interface EventModalProps {
   isVisible: boolean;
@@ -10,6 +21,7 @@ interface EventModalProps {
     title: string;
     isFullDay: boolean;
     summary: string;
+    category?: string;
     [key: string]: any;
   };
   setNewEvent: (event: any) => void;
@@ -20,7 +32,8 @@ interface EventModalProps {
   setSelectedStartTime: (date: Date) => void;
   setSelectedEndTime: (date: Date) => void;
   selectedEventDate: Date;
-  showPicker: (pickerType: 'date' | 'start_date' | 'start_time' | 'end_date' | 'end_time' | 'start' | 'end') => void;  currentPicker: {
+  showPicker: (pickerType: 'date' | 'start_date' | 'start_time' | 'end_date' | 'end_time' | 'start' | 'end') => void;  
+  currentPicker: {
     show: boolean;
     current?: string;
   };
@@ -50,6 +63,9 @@ const EventModal: React.FC<EventModalProps> = ({
     regularStart: new Date(selectedStartTime),
     regularEnd: new Date(selectedEndTime)
   });
+
+  // Ajouter cet état pour gérer la visibilité du picker de catégorie
+  const [isCategoryPickerVisible, setIsCategoryPickerVisible] = useState(false);
 
   // Synchroniser l'état local avec les props quand le modal devient visible
   useEffect(() => {
@@ -154,7 +170,6 @@ const EventModal: React.FC<EventModalProps> = ({
             <View style={styles.switchLabelContainer}>
               <Text style={styles.switchLabel}>Journée entière</Text>
             </View>
-            {/* Switch sans le wrapper avec bordure */}
             <Switch
               key={`switch-${newEvent.id || 'new'}-${mode}`}
               trackColor={{ false: "#e0e0e0", true: "#b3d1ff" }}
@@ -211,6 +226,55 @@ const EventModal: React.FC<EventModalProps> = ({
             </View>
           </View>
 
+          <View style={styles.categoryContainer}>
+            <Text style={styles.categoryLabel}>Catégorie</Text>
+            <TouchableOpacity
+              style={styles.pickerButton}
+              onPress={() => setIsCategoryPickerVisible(true)}
+            >
+              <Text style={styles.pickerButtonText}>
+                {EVENT_CATEGORIES.find(c => c.id === (newEvent.category || 'default'))?.label || 'Par défaut'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Modal pour le Picker de catégorie */}
+          {isCategoryPickerVisible && (
+            <Modal
+              animationType="slide"
+              transparent={true}
+              visible={isCategoryPickerVisible}
+            >
+              <View style={styles.pickerModalContainer}>
+                <View style={styles.pickerModalContent}>
+                  <Text style={[styles.modalTitle, { marginBottom: 10 }]}>Choisir une catégorie</Text>
+                  <Picker
+                    selectedValue={newEvent.category || 'default'}
+                    onValueChange={(itemValue) => {
+                      setNewEvent({ ...newEvent, category: itemValue });
+                    }}
+                    style={{ width: '100%', height: 200 }}
+                  >
+                    {EVENT_CATEGORIES.map((category) => (
+                      <Picker.Item 
+                        key={category.id} 
+                        label={category.label} 
+                        value={category.id}
+                        color={category.color}
+                      />
+                    ))}
+                  </Picker>
+                  <TouchableOpacity
+                    style={styles.pickerCloseButton}
+                    onPress={() => setIsCategoryPickerVisible(false)}
+                  >
+                    <Text style={styles.pickerCloseButtonText}>Valider</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          )}
+
           <TextInput
             style={styles.input}
             placeholder="Description"
@@ -218,7 +282,7 @@ const EventModal: React.FC<EventModalProps> = ({
             onChangeText={(text) => setNewEvent({ ...newEvent, summary: text })}
             multiline
           />
-
+          
           <View style={styles.modalButtons}>
             <TouchableOpacity
               style={styles.cancelButton}
@@ -409,6 +473,28 @@ const styles = StyleSheet.create({
     color: '#2d4150',
     fontWeight: '500', // Ajout pour rendre le texte un peu plus visible
   },
+  // Nouveaux styles pour la catégorie
+  categoryContainer: {
+    marginBottom: 16,
+  },
+  categoryLabel: {
+    fontSize: 16,
+    color: '#2d4150',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+    width: '100%',
+  }
 });
 
 export default EventModal;
