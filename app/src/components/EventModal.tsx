@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Platform, Switch } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 interface EventModalProps {
   isVisible: boolean;
@@ -139,7 +140,7 @@ const EventModal: React.FC<EventModalProps> = ({
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>
-            {mode === 'create' ? "Ajoutez un évènement" : "Modifier l'évènement"}
+            {mode === 'create' ? "Ajouter un évènement" : "Modifier l'évènement"}
           </Text>
 
           <TextInput
@@ -150,12 +151,15 @@ const EventModal: React.FC<EventModalProps> = ({
           />
 
           <View style={styles.switchContainer} key={`switch-container-${newEvent.id || 'new'}-${mode}-${newEvent.isFullDay}`}>
-            <Text style={styles.switchLabel}>Journée entière</Text>
+            <View style={styles.switchLabelContainer}>
+              <Text style={styles.switchLabel}>Journée entière</Text>
+            </View>
+            {/* Switch sans le wrapper avec bordure */}
             <Switch
               key={`switch-${newEvent.id || 'new'}-${mode}`}
-              trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={newEvent.isFullDay ? "#f5dd4b" : "#f4f3f4"}
-              ios_backgroundColor="#3e3e3e"
+              trackColor={{ false: "#e0e0e0", true: "#b3d1ff" }}
+              thumbColor={newEvent.isFullDay ? "#1a73e8": "#ffffff"}
+              ios_backgroundColor="#e0e0e0"
               onValueChange={handleToggleChange}
               value={Boolean(newEvent.isFullDay)}
             />
@@ -383,15 +387,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     marginBottom: 16,
     backgroundColor: '#f8f9fa',
-    borderRadius: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  switchLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   switchLabel: {
     fontSize: 16,
     color: '#2d4150',
+    fontWeight: '500', // Ajout pour rendre le texte un peu plus visible
   },
 });
 
