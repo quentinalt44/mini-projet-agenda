@@ -155,6 +155,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
     }
   };
 
+  // Modifiez la méthode handleAddNewEvent pour utiliser des dates UTC stables pour les événements journée entière
+
   const handleAddNewEvent = async () => {
     if (!isValidEventTimes()) {
       Alert.alert(
@@ -165,13 +167,48 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
       return;
     }
   
+    let startDateISO, endDateISO;
+    
+    if (newEvent.isFullDay) {
+      // Pour les événements journée entière, on utilise une approche différente
+      // qui ignore complètement le fuseau horaire
+      
+      // Récupérer les dates de début et de fin
+      const startDate = new Date(selectedStartTime);
+      const endDate = new Date(selectedEndTime);
+      
+      // Extraire les composants de date pour les manipuler directement en tant que chaînes
+      const startYear = startDate.getFullYear();
+      const startMonth = (startDate.getMonth() + 1).toString().padStart(2, '0');
+      const startDay = startDate.getDate().toString().padStart(2, '0');
+      
+      const endYear = endDate.getFullYear();
+      const endMonth = (endDate.getMonth() + 1).toString().padStart(2, '0');
+      const endDay = endDate.getDate().toString().padStart(2, '0');
+      
+      // Création de chaînes ISO SANS conversion de fuseau horaire
+      // Format: YYYY-MM-DDT00:00:00
+      startDateISO = `${startYear}-${startMonth}-${startDay}T00:00:00`;
+      endDateISO = `${endYear}-${endMonth}-${endDay}T23:59:00`;
+      
+      console.log(`Creating multi-day event from ${startDay}/${startMonth}/${startYear} to ${endDay}/${endMonth}/${endYear}`);
+      console.log(`Start ISO: ${startDateISO}`);
+      console.log(`End ISO: ${endDateISO}`);
+    } else {
+      // Pour les événements normaux, utiliser l'heure sélectionnée
+      startDateISO = selectedStartTime.toISOString();
+      endDateISO = selectedEndTime.toISOString();
+    }
+  
     const eventData = {
       title: newEvent.title,
       summary: newEvent.summary,
-      start_date: selectedStartTime.toISOString(),
-      end_date: selectedEndTime.toISOString(),
+      start_date: startDateISO,
+      end_date: endDateISO,
       isFullDay: newEvent.isFullDay
     };
+  
+    console.log(`Adding event with full day: ${newEvent.isFullDay}`);
   
     try {
       if (newEvent.id) {
@@ -182,8 +219,10 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
           end: eventData.end_date,
           isFullDay: eventData.isFullDay
         });
+        console.log("✅ Event updated successfully");
       } else {
         await databaseService.addEvent(eventData);
+        console.log("✅ Event added successfully");
       }
   
       await loadEvents();
@@ -199,38 +238,49 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
       console.error('Error saving event:', error);
     }
   };
-  
 
-  const handlePickerChange = (event: any, selected?: Date) => {
-    if (!selected) return;
+  const handlePickerChange = (event: any, selectedDate?: Date) => {
+    if (!selectedDate) return;
+    
+    const currentDate = selectedDate || new Date();
+    setCurrentPicker({ ...currentPicker, show: Platform.OS === 'ios' });
   
-    switch (currentPicker.current) {
-      case 'start_date':
-        const newStartDate = new Date(selectedStartTime);
-        newStartDate.setFullYear(selected.getFullYear());
-        newStartDate.setMonth(selected.getMonth());
-        newStartDate.setDate(selected.getDate());
-        setSelectedStartTime(newStartDate);
-        break;
-      case 'start_time':
-        const startWithNewTime = new Date(selectedStartTime);
-        startWithNewTime.setHours(selected.getHours());
-        startWithNewTime.setMinutes(selected.getMinutes());
-        setSelectedStartTime(startWithNewTime);
-        break;
-      case 'end_date':
-        const newEndDate = new Date(selectedEndTime);
-        newEndDate.setFullYear(selected.getFullYear());
-        newEndDate.setMonth(selected.getMonth());
-        newEndDate.setDate(selected.getDate());
-        setSelectedEndTime(newEndDate);
-        break;
-      case 'end_time':
-        const endWithNewTime = new Date(selectedEndTime);
-        endWithNewTime.setHours(selected.getHours());
-        endWithNewTime.setMinutes(selected.getMinutes());
-        setSelectedEndTime(endWithNewTime);
-        break;
+    if (currentPicker.current?.startsWith('start')) {
+      // Si on modifie la date ou l'heure de début
+      const newStartTime = new Date(selectedStartTime);
+      
+      if (currentPicker.current === 'start_date') {
+        // Si on modifie la date uniquement, garder l'heure actuelle
+        newStartTime.setFullYear(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+      } else {
+        // Si on modifie l'heure uniquement, garder la date actuelle
+        newStartTime.setHours(currentDate.getHours(), currentDate.getMinutes());
+      }
+      
+      setSelectedStartTime(newStartTime);
+      
+      // Mettre à jour l'état de l'événement avec la nouvelle date/heure
+      setNewEvent({
+        ...newEvent,
+        start: newStartTime.toISOString()
+      });
+    } else {
+      // Si on modifie la date ou l'heure de fin
+      const newEndTime = new Date(selectedEndTime);
+      
+      if (currentPicker.current === 'end_date') {
+        newEndTime.setFullYear(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+      } else {
+        newEndTime.setHours(currentDate.getHours(), currentDate.getMinutes());
+      }
+      
+      setSelectedEndTime(newEndTime);
+      
+      // Mettre à jour l'état de l'événement avec la nouvelle date/heure
+      setNewEvent({
+        ...newEvent,
+        end: newEndTime.toISOString()
+      });
     }
   };
 
@@ -315,41 +365,105 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
 
   // Using the state variable instead of creating a new constant
 
+  // Modifiez également la méthode loadItemsForMonth
   const loadItemsForMonth = (day: CalendarDay) => {
     const items: AgendaItems = {};
     
     events.forEach(event => {
-      const startDate = new Date(event.start);
-      const endDate = new Date(event.end);
-      
-      // Loop through all days between start and end date
-      let currentDate = new Date(startDate);
-      while (currentDate <= endDate) {
-        const dateString = currentDate.toISOString().split('T')[0];
-        
-        if (!items[dateString]) {
-          items[dateString] = [];
+      try {
+        if (event.isFullDay) {
+          // Pour les événements journée entière, traiter uniquement les parties date
+          // sans créer d'objets Date qui causeraient des conversions de fuseau horaire
+          
+          // Pour start et end, prenez seulement la partie date (avant le T)
+          const startDateParts = event.start.split('T')[0].split('-');
+          const endDateParts = event.end.split('T')[0].split('-');
+          
+          // Créer des dates locales sans heures pour itérer
+          const startYear = parseInt(startDateParts[0]);
+          const startMonth = parseInt(startDateParts[1]) - 1; // Mois en JS commence à 0
+          const startDay = parseInt(startDateParts[2]);
+          
+          const endYear = parseInt(endDateParts[0]);
+          const endMonth = parseInt(endDateParts[1]) - 1;
+          const endDay = parseInt(endDateParts[2]);
+          
+          const startDate = new Date(startYear, startMonth, startDay);
+          const endDate = new Date(endYear, endMonth, endDay);
+          
+          // Créer une date pour itérer sur tous les jours
+          const currentDate = new Date(startDate);
+          
+          // Boucler sur chaque jour entre début et fin
+          while (currentDate <= endDate) {
+            const year = currentDate.getFullYear();
+            const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+            const day = currentDate.getDate().toString().padStart(2, '0');
+            const dateKey = `${year}-${month}-${day}`;
+            
+            if (!items[dateKey]) {
+              items[dateKey] = [];
+            }
+            
+            items[dateKey].push({
+              id: event.id,
+              title: event.title,
+              height: 50,
+              summary: event.summary,
+              start: event.start,
+              end: event.end,
+              isFullDay: event.isFullDay
+            });
+            
+            // Passer au jour suivant
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+        } else {
+          // Pour les événements réguliers, utiliser le code existant
+          const startDate = new Date(event.start);
+          const endDate = new Date(event.end);
+          
+          // Si l'événement s'étend sur plusieurs jours, l'ajouter à tous les jours concernés
+          const currentDate = new Date(startDate);
+          currentDate.setHours(0, 0, 0, 0); // Début de la journée
+          
+          const lastDay = new Date(endDate);
+          lastDay.setHours(23, 59, 59, 999); // Fin de la journée
+          
+          while (currentDate <= lastDay) {
+            // Utiliser une méthode qui évite les problèmes de fuseau horaire
+            const year = currentDate.getFullYear();
+            const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+            const day = currentDate.getDate().toString().padStart(2, '0');
+            const dateString = `${year}-${month}-${day}`;
+            
+            if (!items[dateString]) {
+              items[dateString] = [];
+            }
+            
+            items[dateString].push({
+              id: event.id,
+              title: event.title,
+              height: 50,
+              summary: event.summary,
+              start: event.start,
+              end: event.end,
+              isFullDay: event.isFullDay
+            });
+            
+            // Passer au jour suivant (cette ligne est importante!)
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
         }
-        
-        items[dateString].push({
-          id: event.id,
-          title: event.title,
-          height: 50,
-          summary: event.summary,
-          start: event.start,
-          end: event.end,
-          isFullDay: event.isFullDay // Ajoutez cette ligne
-        });
-        
-        // Move to next day
-        currentDate.setDate(currentDate.getDate() + 1);
+      } catch (error) {
+        console.error("Error processing event:", error, event);
       }
     });
-  
+    
     if (!items[day.dateString]) {
       items[day.dateString] = [];
     }
-  
+    
     return items;
   };
 
@@ -624,6 +738,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
         setIsModalVisible={setIsModalVisible}
         selectedStartTime={selectedStartTime}
         selectedEndTime={selectedEndTime}
+        setSelectedStartTime={setSelectedStartTime}
+        setSelectedEndTime={setSelectedEndTime}
         selectedEventDate={selectedEventDate}
         showPicker={showPicker}
         currentPicker={currentPicker}

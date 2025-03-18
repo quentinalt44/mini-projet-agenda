@@ -16,6 +16,8 @@ interface EventModalProps {
   setIsModalVisible: (visible: boolean) => void;
   selectedStartTime: Date;
   selectedEndTime: Date;
+  setSelectedStartTime: (date: Date) => void;
+  setSelectedEndTime: (date: Date) => void;
   selectedEventDate: Date;
   showPicker: (pickerType: 'date' | 'start_date' | 'start_time' | 'end_date' | 'end_time' | 'start' | 'end') => void;  currentPicker: {
     show: boolean;
@@ -34,35 +36,80 @@ const EventModal: React.FC<EventModalProps> = ({
   setIsModalVisible,
   selectedStartTime,
   selectedEndTime,
+  setSelectedStartTime,
+  setSelectedEndTime,
   selectedEventDate,
   showPicker,
   currentPicker,
   setCurrentPicker,
   handlePickerChange,
 }) => {
-  // État complètement indépendant pour le toggle
-  const [isFullDayToggle, setIsFullDayToggle] = useState(false);
-  
-  // Initialiser l'état local au montage et quand newEvent ou isVisible change
+  // État local pour conserver les heures avant/après toggle
+  const [localTimes, setLocalTimes] = useState({
+    regularStart: new Date(selectedStartTime),
+    regularEnd: new Date(selectedEndTime)
+  });
+
+  // Synchroniser l'état local avec les props quand le modal devient visible
   useEffect(() => {
     if (isVisible) {
-      console.log("Modal visible, initializing toggle with:", newEvent.isFullDay);
-      setIsFullDayToggle(Boolean(newEvent.isFullDay));
+      setLocalTimes({
+        regularStart: new Date(selectedStartTime),
+        regularEnd: new Date(selectedEndTime)
+      });
     }
-  }, [isVisible, newEvent.id]);
+  }, [isVisible, selectedStartTime, selectedEndTime]);
 
   const handleToggleChange = (value: boolean) => {
     console.log("Toggle changed to:", value);
-    setIsFullDayToggle(value);
-    // Mise à jour immédiate de l'état parent
+    
+    // Créer de nouvelles instances de Date
+    let newStartTime, newEndTime;
+    
+    if (value) {
+      // Si "journée entière" est activé
+      // Sauvegarder d'abord les heures actuelles
+      setLocalTimes({
+        regularStart: new Date(selectedStartTime),
+        regularEnd: new Date(selectedEndTime)
+      });
+      
+      // Puis définir 00:00 et 23:59
+      newStartTime = new Date(selectedEventDate);
+      newStartTime.setHours(0, 0, 0, 0);
+      
+      newEndTime = new Date(selectedEventDate);
+      newEndTime.setHours(23, 59, 0, 0);
+    } else {
+      // Si "journée entière" est désactivé, restaurer les heures par défaut
+      newStartTime = new Date(selectedEventDate);
+      newStartTime.setHours(9, 0, 0, 0);
+      
+      newEndTime = new Date(selectedEventDate);
+      newEndTime.setHours(10, 0, 0, 0);
+    }
+    
+    // Mise à jour des états dans le parent
+    setSelectedStartTime(newStartTime);
+    setSelectedEndTime(newEndTime);
+    
+    // Mise à jour de l'événement complet
     setNewEvent({
       ...newEvent,
-      isFullDay: value
+      isFullDay: value,
+      start: newStartTime.toISOString(),
+      end: newEndTime.toISOString()
     });
   };
 
-  // Formatage de l'heure
+  // Fonction personnalisée pour formater l'heure
   const formatTime = (date: Date) => {
+    // Si c'est un événement sur toute la journée, afficher des valeurs fixes
+    if (newEvent.isFullDay) {
+      return date.getHours() === 0 ? "00:00" : "23:59";
+    }
+    
+    // Sinon afficher l'heure normale
     if (!(date instanceof Date) || isNaN(date.getTime())) {
       return "Sélectionner";
     }
@@ -102,16 +149,15 @@ const EventModal: React.FC<EventModalProps> = ({
             onChangeText={(text) => setNewEvent({ ...newEvent, title: text })}
           />
 
-          {/* Switch contrôlé UNIQUEMENT par l'état local */}
-          <View style={styles.switchContainer} key={`switch-container-${newEvent.id || 'new'}-${mode}-${isFullDayToggle}`}>
+          <View style={styles.switchContainer} key={`switch-container-${newEvent.id || 'new'}-${mode}-${newEvent.isFullDay}`}>
             <Text style={styles.switchLabel}>Journée entière</Text>
             <Switch
               key={`switch-${newEvent.id || 'new'}-${mode}`}
               trackColor={{ false: "#767577", true: "#81b0ff" }}
-              thumbColor={isFullDayToggle ? "#f5dd4b" : "#f4f3f4"}
+              thumbColor={newEvent.isFullDay ? "#f5dd4b" : "#f4f3f4"}
               ios_backgroundColor="#3e3e3e"
               onValueChange={handleToggleChange}
-              value={isFullDayToggle}
+              value={Boolean(newEvent.isFullDay)}
             />
           </View>
 
