@@ -562,18 +562,52 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
                   console.error("Erreur lors du calcul du badge de jour:", error);
                 }
               } else {
-                // Badge pour les événements classiques: horaires de début et fin
+                // Badge pour les événements classiques
                 try {
                   const startDate = new Date(item.start);
                   const endDate = new Date(item.end);
+                  const currentDate = new Date(selectedDate);
                   
-                  // Formatter les heures au format 24h: HH:MM
-                  const startHour = startDate.getHours().toString().padStart(2, '0');
-                  const startMin = startDate.getMinutes().toString().padStart(2, '0');
-                  const endHour = endDate.getHours().toString().padStart(2, '0');
-                  const endMin = endDate.getMinutes().toString().padStart(2, '0');
+                  // Vérifier si l'événement s'étend sur plusieurs jours
+                  const startDay = new Date(startDate);
+                  startDay.setHours(0, 0, 0, 0);
                   
-                  badge = `${startHour}:${startMin} - ${endHour}:${endMin}`;
+                  const endDay = new Date(endDate);
+                  endDay.setHours(0, 0, 0, 0);
+                  
+                  const currentDay = new Date(currentDate);
+                  currentDay.setHours(0, 0, 0, 0);
+                  
+                  const isMultiDayEvent = startDay.getTime() !== endDay.getTime();
+                  
+                  if (isMultiDayEvent) {
+                    // C'est un événement sur plusieurs jours
+                    
+                    // Formatter les heures au format 24h: HH:MM
+                    const startHour = startDate.getHours().toString().padStart(2, '0');
+                    const startMin = startDate.getMinutes().toString().padStart(2, '0');
+                    const endHour = endDate.getHours().toString().padStart(2, '0');
+                    const endMin = endDate.getMinutes().toString().padStart(2, '0');
+                    
+                    if (currentDay.getTime() === startDay.getTime()) {
+                      // Premier jour de l'événement
+                      badge = `Début ${startHour}:${startMin} →`;
+                    } else if (currentDay.getTime() === endDay.getTime()) {
+                      // Dernier jour de l'événement
+                      badge = `→ Fin ${endHour}:${endMin}`;
+                    } else {
+                      // Jour intermédiaire
+                      badge = `Jour intermédiaire`;
+                    }
+                  } else {
+                    // Événement classique d'un jour
+                    const startHour = startDate.getHours().toString().padStart(2, '0');
+                    const startMin = startDate.getMinutes().toString().padStart(2, '0');
+                    const endHour = endDate.getHours().toString().padStart(2, '0');
+                    const endMin = endDate.getMinutes().toString().padStart(2, '0');
+                    
+                    badge = `${startHour}:${startMin} - ${endHour}:${endMin}`;
+                  }
                 } catch (error) {
                   console.error("Erreur lors de la formation des heures:", error);
                 }
