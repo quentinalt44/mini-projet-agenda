@@ -539,24 +539,45 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
             }}
             renderItem={(item: AgendaItem) => {
               // Log de débogage pour voir la catégorie et la couleur utilisée
-              console.log(`Renderisation de l'item ${item.title}, catégorie: ${item.category}`);
+              console.log(`Renderisation de l'item ${item.title}, catégorie: ${item.category}, fullDay: ${item.isFullDay}`);
               
               const category = EVENT_CATEGORIES.find(cat => cat.id === (item.category || 'default'));
               const categoryColor = category?.color || '#1a73e8';
               
-              console.log(`Couleur choisie: ${categoryColor}, catégorie trouvée: ${category?.name || 'Inconnue'}`);
+              // Style différent selon que l'événement est sur la journée entière ou non
+              const itemStyle = item.isFullDay 
+                ? [
+                    styles.agendaItem, 
+                    { 
+                      backgroundColor: categoryColor,
+                      borderLeftWidth: 0 // Pas besoin de bordure si tout est coloré
+                    }
+                  ] 
+                : [
+                    styles.agendaItem,
+                    { 
+                      borderLeftWidth: 4, 
+                      borderLeftColor: categoryColor 
+                    }
+                  ];
+              
+              // Style de texte différent pour les événements journée entière
+              const titleStyle = item.isFullDay
+                ? [styles.agendaItemTitle, { color: '#ffffff', fontWeight: 'bold' as const }]
+                : styles.agendaItemTitle;
+              
+              const summaryStyle = item.isFullDay
+                ? [styles.agendaItemSummary, { color: '#ffffff', opacity: 0.9 }]
+                : styles.agendaItemSummary;
               
               return (
                 <TouchableOpacity 
-                  style={[
-                    styles.agendaItem,
-                    { borderLeftWidth: 4, borderLeftColor: categoryColor }
-                  ]}
+                  style={itemStyle}
                   onPress={() => handleEventPress(item)}
                 >
-                  <Text style={styles.agendaItemTitle}>{item.title}</Text>
+                  <Text style={titleStyle}>{item.title}</Text>
                   {item.summary && (
-                    <Text style={styles.agendaItemSummary}>{item.summary}</Text>
+                    <Text style={summaryStyle}>{item.summary}</Text>
                   )}
                 </TouchableOpacity>
               );
