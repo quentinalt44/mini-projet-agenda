@@ -293,31 +293,88 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
       if (currentPicker.current === 'start_date') {
         // Si on modifie la date uniquement, garder l'heure actuelle
         newStartTime.setFullYear(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+        
+        // Vérifier si la nouvelle date de début est après la date de fin
+        if (newStartTime > selectedEndTime) {
+          // Mettre à jour la date de fin pour qu'elle soit la même que la date de début
+          const newEndTime = new Date(newStartTime);
+          if (!newEvent.isFullDay) {
+            // Si ce n'est pas un événement journée entière, ajouter 1 heure par défaut
+            newEndTime.setHours(newStartTime.getHours() + 1);
+          }
+          setSelectedEndTime(newEndTime);
+          setNewEvent({
+            ...newEvent,
+            start: newStartTime.toISOString(),
+            end: newEndTime.toISOString()
+          });
+        } else {
+          // Sinon, mettre à jour uniquement la date de début
+          setNewEvent({
+            ...newEvent,
+            start: newStartTime.toISOString()
+          });
+        }
       } else {
-        // Si on modifie l'heure uniquement, garder la date actuelle
+        // Si on modifie l'heure uniquement
         newStartTime.setHours(currentDate.getHours(), currentDate.getMinutes());
+        
+        // Vérifier si la nouvelle heure de début est après l'heure de fin
+        if (newStartTime > selectedEndTime) {
+          // Mettre à jour l'heure de fin pour qu'elle soit 1 heure après le début
+          const newEndTime = new Date(newStartTime);
+          newEndTime.setHours(newStartTime.getHours() + 1);
+          setSelectedEndTime(newEndTime);
+          setNewEvent({
+            ...newEvent,
+            start: newStartTime.toISOString(),
+            end: newEndTime.toISOString()
+          });
+        } else {
+          // Sinon, mettre à jour uniquement l'heure de début
+          setNewEvent({
+            ...newEvent,
+            start: newStartTime.toISOString()
+          });
+        }
       }
       
       setSelectedStartTime(newStartTime);
       
-      // Mettre à jour l'état de l'événement avec la nouvelle date/heure
-      setNewEvent({
-        ...newEvent,
-        start: newStartTime.toISOString()
-      });
     } else {
-      // Si on modifie la date ou l'heure de fin
+      // Gestion de la date/heure de fin
       const newEndTime = new Date(selectedEndTime);
       
       if (currentPicker.current === 'end_date') {
+        // Si on modifie la date de fin
         newEndTime.setFullYear(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+        
+        // Vérifier si la nouvelle date de fin est avant la date de début
+        if (newEndTime < selectedStartTime) {
+          Alert.alert(
+            "Erreur",
+            "La date de fin ne peut pas être antérieure à la date de début",
+            [{ text: "OK" }]
+          );
+          return;
+        }
       } else {
+        // Si on modifie l'heure de fin
         newEndTime.setHours(currentDate.getHours(), currentDate.getMinutes());
+        
+        // Vérifier si la nouvelle heure de fin est avant l'heure de début
+        if (newEndTime < selectedStartTime) {
+          Alert.alert(
+            "Erreur",
+            "L'heure de fin ne peut pas être antérieure à l'heure de début",
+            [{ text: "OK" }]
+          );
+          return;
+        }
       }
       
+      // Mettre à jour l'heure de fin
       setSelectedEndTime(newEndTime);
-      
-      // Mettre à jour l'état de l'événement avec la nouvelle date/heure
       setNewEvent({
         ...newEvent,
         end: newEndTime.toISOString()
