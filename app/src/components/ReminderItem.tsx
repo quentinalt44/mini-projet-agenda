@@ -27,7 +27,6 @@ const ReminderItem: React.FC<ReminderItemProps> = ({ reminder, onUpdate, onDelet
 
   return (
     <View style={styles.container}>
-      <Text style={styles.labelText}>Me rappeler</Text>
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.timeInput}
@@ -87,10 +86,8 @@ const ReminderItem: React.FC<ReminderItemProps> = ({ reminder, onUpdate, onDelet
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    marginVertical: 2,
+    paddingVertical: 2,
   },
   labelText: {
     fontSize: 14,
@@ -114,6 +111,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingHorizontal: 8,
     marginRight: 8,
+    textAlign: 'center',
   },
   unitButton: {
     flex: 1,

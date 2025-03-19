@@ -394,47 +394,49 @@ const EventModal: React.FC<EventModalProps> = ({
               multiline
             />
 
-            {/* Section des rappels */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Rappels</Text>
-              
+            {/* Séparateur au-dessus de la section rappels */}
+            <View style={[styles.separator, {marginTop: 10, marginBottom: 3}]} />
+
+            {/* Section des rappels, sans séparateur entre les rappels et le bouton */}
+            <View style={styles.reminderBlock}>
               {eventReminders.length > 0 ? (
-                eventReminders.map((reminder, index) => (
-                  <ReminderItem
-                    key={reminder.id || index}
-                    reminder={reminder}
-                    onUpdate={updateReminder}
-                    onDelete={deleteReminder}
-                    // Supprimer complètement la prop isDefault pour ne plus différencier les rappels
-                  />
-                ))
-              ) : (
-                <View style={styles.noRemindersContainer}>
-                  <Text style={styles.noRemindersText}>Aucun rappel configuré</Text>
+                <>
+                  {/* Afficher chaque rappel */}
+                  {eventReminders.map((reminder, index) => (
+                    <ReminderItem
+                      key={reminder.id || index}
+                      reminder={reminder}
+                      onUpdate={updateReminder}
+                      onDelete={deleteReminder}
+                    />
+                  ))}
+                  
+                  {/* Bouton "Ajouter un autre rappel" sans séparateur */}
                   <TouchableOpacity 
-                    style={[styles.addReminderButton, { marginTop: 8 }]}
+                    style={styles.addReminderButton}
                     onPress={addReminder}
                   >
-                    <Ionicons name="alarm-outline" size={20} color="#1a73e8" />
+                    <Ionicons name="add-circle-outline" size={20} color="#1a73e8" />
                     <Text style={styles.addReminderText}>
-                      Configurer un rappel
+                      Ajouter un autre rappel
                     </Text>
                   </TouchableOpacity>
-                </View>
-              )}
-              
-              {eventReminders.length > 0 && (
+                </>
+              ) : (
                 <TouchableOpacity 
                   style={styles.addReminderButton}
                   onPress={addReminder}
                 >
-                  <Ionicons name="add-circle-outline" size={20} color="#1a73e8" />
+                  <Ionicons name="alarm-outline" size={20} color="#1a73e8" />
                   <Text style={styles.addReminderText}>
-                    Ajouter un autre rappel
+                    Configurer un rappel
                   </Text>
                 </TouchableOpacity>
               )}
             </View>
+
+            {/* Séparateur en dessous de la section rappels */}
+            <View style={[styles.separator, {marginTop: 3, marginBottom: 10}]} />
           </ScrollView>
           
           <View style={styles.modalButtons}>
@@ -702,7 +704,6 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     backgroundColor: '#e0e0e0',
-    marginVertical: 5, // Réduit de 10 à 5px
   },
   dateTimeBlock: {
     width: '100%', // Augmenté de 90% à 95%
@@ -788,6 +789,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     minWidth: 120,
     alignItems: 'center',
+  },
+  // Ajouter le style pour le bloc des rappels
+  reminderBlock: {
+    width: '100%',
+    alignSelf: 'center',
+    padding: 10,
   },
 });
 
