@@ -651,31 +651,35 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
                 ? {
                     paddingHorizontal: 6,
                     paddingVertical: 2,
-                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    backgroundColor: 'rgb(255, 255, 255)', // Bleu très transparent
                     borderRadius: 10,
                     marginLeft: 8,
-                    alignSelf: 'flex-start' as 'flex-start'
+                    alignSelf: 'flex-start' as 'flex-start',
+                    borderWidth: 1,
+                    borderColor: 'rgba(26, 115, 232, 1)' // Bordure légèrement plus visible
                   }
                 : {
                     paddingHorizontal: 6,
                     paddingVertical: 2,
-                    backgroundColor: '#f1f3f4',
+                    backgroundColor: 'rgba(26, 115, 232, 0.2)', // Même bleu transparent
                     borderRadius: 10,
                     marginLeft: 8,
-                    alignSelf: 'flex-start' as 'flex-start'
+                    alignSelf: 'flex-start' as 'flex-start',
+                    borderWidth: 1,
+                    borderColor: 'rgba(26, 115, 232, 0.2)' // Même bordure
                   };
               
               const badgeTextStyle = item.isFullDay
                 ? {
-                    color: '#ffffff',
-                    fontSize: 10,
-                    fontWeight: 'bold' as 'bold'
-                  }
+                  color: 'rgba(26, 115, 232, 1)',
+                  fontSize: 10,
+                  fontWeight: 'bold' as 'bold'
+                }
                 : {
-                    color: '#5f6368',
-                    fontSize: 10,
-                    fontWeight: 'bold' as 'bold'
-                  };
+                  color: '#1a73e8', // Texte en bleu
+                  fontSize: 10,
+                  fontWeight: 'bold' as 'bold'
+                };
               
               return (
                 <TouchableOpacity 
