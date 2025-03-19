@@ -14,6 +14,23 @@ interface Event {
   category?: string;
 }
 
+interface Reminder {
+  id?: number;
+  event_id: number;
+  time: number;
+  unit: string;
+}
+
+// Définition des catégories d'événements
+const EVENT_CATEGORIES = [
+  { id: 'default', label: 'Par défaut', color: '#1a73e8' },
+  { id: 'work', label: 'Travail', color: '#d50000' },
+  { id: 'personal', label: 'Personnel', color: '#33b679' },
+  { id: 'family', label: 'Famille', color: '#f6bf26' },
+  { id: 'health', label: 'Santé', color: '#8e24aa' },
+  { id: 'other', label: 'Autre', color: '#616161' },
+];
+
 class DatabaseService {
   private db: SQLite.SQLiteDatabase;
 
@@ -52,6 +69,17 @@ class DatabaseService {
           throw err;
         }
       }
+
+      // Créez la table reminders
+      await this.db.execAsync(`
+        CREATE TABLE IF NOT EXISTS reminders (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          event_id INTEGER NOT NULL,
+          time INTEGER NOT NULL,
+          unit TEXT NOT NULL,
+          FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE
+        );
+      `);
       
       console.log("📦 Database initialized");
       
@@ -93,17 +121,73 @@ class DatabaseService {
     }
   }
 
-  async addEvent(event: Omit<Event, 'id' | 'created_at'>): Promise<void> {
+  async addEvent(event: any): Promise<any> {
     console.log('Adding event with full day:', event.isFullDay); // Pour debug
     try {
       await this.db.runAsync(
         'INSERT INTO events (title, summary, start_date, end_date, is_full_day, category) VALUES (?, ?, ?, ?, ?, ?)',
-        [event.title, event.summary || null, event.start_date, event.end_date, event.isFullDay ? 1 : 0, event.category || 'default']
+        [event.title, event.summary, event.start_date, event.end_date, event.isFullDay ? 1 : 0, event.category]
       );
+      
+      // Get the last inserted ID
+      const result = await this.db.getAllAsync<{ id: number }>(
+        'SELECT last_insert_rowid() as id'
+      );
+      const eventId = result[0]?.id;
+      
+      // Ajouter les rappels si présents
+      if (event.reminders && event.reminders.length > 0) {
+        for (const reminder of event.reminders) {
+          await this.addReminder(eventId, reminder);
+        }
+      }
+      
       console.log('✅ Event added successfully');
       await this.displayTableContent();
+      return { id: eventId, ...event };
     } catch (error) {
       console.error('Error adding event:', error);
+      throw error;
+    }
+  }
+  
+  async addReminder(eventId: number, reminder: Reminder): Promise<any> {
+    try {
+      await this.db.runAsync(
+        'INSERT INTO reminders (event_id, time, unit) VALUES (?, ?, ?)',
+        [eventId, reminder.time, reminder.unit]
+      );
+      
+      // Get the last inserted ID
+      const result = await this.db.getAllAsync<{ id: number }>(
+        'SELECT last_insert_rowid() as id'
+      );
+      const reminderId = result[0]?.id;
+      return { id: reminderId, eventId, ...reminder };
+    } catch (error) {
+      console.error('Error adding reminder:', error);
+      throw error;
+    }
+  }
+
+  async getRemindersForEvent(eventId: number): Promise<Reminder[]> {
+    try {
+      const reminders = await this.db.getAllAsync<Reminder>(
+        'SELECT * FROM reminders WHERE event_id = ?',
+        [eventId]
+      );
+      return reminders;
+    } catch (error) {
+      console.error('Error getting reminders for event:', error);
+      return [];
+    }
+  }
+
+  async deleteReminder(reminderId: number): Promise<void> {
+    try {
+      await this.db.runAsync('DELETE FROM reminders WHERE id = ?', [reminderId]);
+    } catch (error) {
+      console.error('Error deleting reminder:', error);
       throw error;
     }
   }
@@ -190,49 +274,4 @@ class DatabaseService {
 }
 
 export const databaseService = new DatabaseService();
-
-// Définition des catégories d'événements
-const EVENT_CATEGORIES = [
-  { id: 'default', label: 'Par défaut', color: '#1a73e8' },
-  { id: 'work', label: 'Travail', color: '#d50000' },
-  { id: 'personal', label: 'Personnel', color: '#33b679' },
-  { id: 'family', label: 'Famille', color: '#f6bf26' },
-  { id: 'health', label: 'Santé', color: '#8e24aa' },
-  { id: 'other', label: 'Autre', color: '#616161' },
-];
-
-// Dans la fonction getAllEvents ou dans la fonction qui affiche les logs
-
-// Si vous avez une fonction qui génère les logs comme celle-ci:
-const logEvents = async () => {
-  try {
-    const events = await databaseService.getEvents();
-    console.log("📅 Current Events in Database:");
-    console.log("================================");
-    
-    if (events.length === 0) {
-      console.log("No events in database");
-    } else {
-      events.forEach(event => {
-        // Trouver la catégorie pour l'affichage
-        const category = EVENT_CATEGORIES.find(cat => cat.id === (event.category || 'default'));
-        const categoryLabel = category ? category.label : 'Par défaut';
-        
-        console.log(`
-              🎯 ID: ${event.id}
-              📝 Title: ${event.title}
-              📋 Summary: ${event.summary || 'N/A'}
-              ⏰ Start: ${new Date(event.start_date).toLocaleString()}
-              🔚 End: ${new Date(event.end_date).toLocaleString()}
-              📆 Full Day: ${event.isFullDay ? 'Yes' : 'No'}
-              🏷️ Category: ${categoryLabel}
-              ⏱️ Created: ${event.created_at}
-              --------------------------------`);
-      });
-    }
-    
-    console.log("================================");
-  } catch (error) {
-    console.error("Error logging events:", error);
-  }
-};
+export { EVENT_CATEGORIES };

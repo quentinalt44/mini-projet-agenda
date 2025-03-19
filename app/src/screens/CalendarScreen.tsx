@@ -61,6 +61,12 @@ interface TimelineEvent {
 
 type ViewType = 'day' | 'week' | 'month';
 
+interface Reminder {
+  id?: string | number;
+  time: number;  // Valeur numérique
+  unit: 'minute' | 'hour' | 'day';  // Unité de temps
+}
+
 interface Event {
   id?: string | number;
   title: string;
@@ -71,6 +77,7 @@ interface Event {
   start_date?: string;
   end_date?: string;
   category?: string;
+  reminders?: Reminder[];  // Ajout de la propriété reminders
 }
 
 interface EventUpdateData {
@@ -234,7 +241,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
       start_date: startDateISO,
       end_date: endDateISO,
       isFullDay: newEvent.isFullDay,
-      category: newEvent.category || 'default' // Assurez-vous que la catégorie est envoyée
+      category: newEvent.category || 'default', // Assurez-vous que la catégorie est envoyée
+      reminders: newEvent.reminders || [] // Ajoutez cette ligne
     };
   
     console.log(`Adding event with full day: ${newEvent.isFullDay}, category: ${newEvent.category || 'default'}`);
@@ -730,13 +738,14 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
     setSelectedEndTime(newEndTime);
   
     // Utiliser un nouvel objet complètement différent
-    const freshEvent = {
+    const freshEvent: Event = {
       id: undefined,
       title: '',
       summary: '',
       start: newStartTime.toISOString(),
       end: newEndTime.toISOString(),
-      isFullDay: false
+      isFullDay: false,
+      reminders: []
     };
     
     console.log("Creating new event with isFullDay:", freshEvent.isFullDay);
@@ -973,6 +982,17 @@ const handleEditEvent = () => {
         currentPicker={currentPicker}
         handlePickerChange={handlePickerChange}
         setCurrentPicker={setCurrentPicker}
+        // Ajoutez ces props manquantes
+        reminders={(newEvent.reminders || []).map(reminder => ({
+          ...reminder,
+          id: reminder.id !== undefined ? reminder.id : Date.now().toString()
+        }))}
+        onUpdateReminders={(updatedReminders) => {
+          setNewEvent({
+            ...newEvent,
+            reminders: updatedReminders
+          });
+        }}
       />
 
       {/* Modal de détails */}
