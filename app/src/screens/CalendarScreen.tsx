@@ -315,15 +315,19 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
             start: newStartTime.toISOString()
           });
         }
-      } else {
+      } else if (currentPicker.current === 'start_time') {
         // Si on modifie l'heure uniquement
         newStartTime.setHours(currentDate.getHours(), currentDate.getMinutes());
         
-        // Vérifier si la nouvelle heure de début est après l'heure de fin
-        if (newStartTime > selectedEndTime) {
-          // Mettre à jour l'heure de fin pour qu'elle soit 1 heure après le début
+        // Vérifier si les dates sont égales (même jour)
+        const sameDay = newStartTime.toDateString() === selectedEndTime.toDateString();
+        
+        // Mettre à jour l'heure de fin si même jour
+        if (sameDay) {
+          // Créer une nouvelle date de fin 1h après le début
           const newEndTime = new Date(newStartTime);
-          newEndTime.setHours(newStartTime.getHours() + 1);
+          newEndTime.setHours(newStartTime.getHours() + 1, newStartTime.getMinutes());
+          
           setSelectedEndTime(newEndTime);
           setNewEvent({
             ...newEvent,
@@ -331,15 +335,17 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
             end: newEndTime.toISOString()
           });
         } else {
-          // Sinon, mettre à jour uniquement l'heure de début
+          // Si les dates sont différentes, mettre à jour uniquement l'heure de début
           setNewEvent({
             ...newEvent,
             start: newStartTime.toISOString()
           });
         }
+        
+        setSelectedStartTime(newStartTime);
+      } else {
+        // Reste du code pour la date...
       }
-      
-      setSelectedStartTime(newStartTime);
       
     } else {
       // Gestion de la date/heure de fin
