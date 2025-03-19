@@ -8,7 +8,7 @@ interface ReminderItemProps {
     time: number;
     unit: 'minute' | 'hour' | 'day';
   };
-  onUpdate: (id: string | number, reminder: any) => void;
+  onUpdate?: (id: string | number, reminder: any) => void;
   onDelete: (id: string | number) => void;
 }
 
@@ -29,14 +29,25 @@ const ReminderItem: React.FC<ReminderItemProps> = ({ reminder, onDelete }) => {
 
   return (
     <View style={styles.container}>
-      <Ionicons name="alarm-outline" size={20} color="#1a73e8" style={styles.icon} />
+      {/* Icône */}
+      <View style={styles.iconContainer}>
+        <Text>
+          <Ionicons name="alarm-outline" size={20} color="#1a73e8" />
+        </Text>
+      </View>
+      
+      {/* Texte */}
       <Text style={styles.reminderText}>{formatReminderText()}</Text>
+      
+      {/* Bouton de suppression */}
       <TouchableOpacity 
         style={styles.deleteButton}
         onPress={() => onDelete(reminder.id)}
       >
         <View style={styles.deleteIconContainer}>
-          <Ionicons name="close" size={12} color="white" style={styles.deleteIcon} />
+          <Text style={styles.deleteIconText}>
+            <Ionicons name="close" size={12} color="white" />
+          </Text>
         </View>
       </TouchableOpacity>
     </View>
@@ -52,8 +63,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     marginBottom: 5
   },
-  icon: {
-    marginRight: 10
+  iconContainer: {
+    marginRight: 10,
   },
   reminderText: {
     fontSize: 16,
@@ -64,19 +75,18 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   deleteIconContainer: {
-    backgroundColor: '#e53935', // Rouge moyen, entre clair et foncé
+    backgroundColor: '#ff5252',
     borderRadius: 10,
     width: 20,
     height: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteIcon: {
+  deleteIconText: {
+    color: 'white',
     fontWeight: 'bold',
-    lineHeight: 14,
-    width: 14,
-    height: 14,
     textAlign: 'center',
+    lineHeight: 20,
   }
 });
 

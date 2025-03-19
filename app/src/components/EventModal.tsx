@@ -350,7 +350,9 @@ const EventModal: React.FC<EventModalProps> = ({
               {/* Toggle pour journée entière avec icône d'horloge */}
               <View style={[styles.switchContainer, {paddingVertical: 8, marginBottom: 8}]}>
                 <View style={styles.switchLabelContainer}>
-                  <Ionicons name="time-outline" size={20} color="#1a73e8" style={{marginRight: 10}} />
+                  <Text style={{ marginRight: 10 }}>
+                    <Ionicons name="time-outline" size={20} color="#1a73e8" />
+                  </Text>
                   <Text style={styles.switchLabel}>Journée entière</Text>
                 </View>
                 <Switch
@@ -414,25 +416,22 @@ const EventModal: React.FC<EventModalProps> = ({
               </View>
             </View>
 
-            {/* Séparateur en dessous de la date de fin - réduire la marge au-dessus */}
-            <View style={[styles.separator, {marginTop: 3, marginBottom: 20}]} />
+            {/* Séparateur en dessous de la date de fin */}
+            <View style={[styles.separator, {marginTop: 3, marginBottom: 15}]} />
 
-            {/* Description avec icône à l'extérieur */}
+            {/* Description avec icône à l'extérieur - correction sans introduire d'erreur */}
             <View style={{
               flexDirection: 'row',
               alignItems: 'flex-start',
-              marginBottom: 15,
+              marginBottom: 0,
               paddingHorizontal: 10
             }}>
-              <Ionicons 
-                name="document-text-outline" 
-                size={20} 
-                color="#1a73e8" 
-                style={{marginRight: 10, marginTop: 12}}
-              />
+              <Text style={{ marginRight: 10, marginTop: 12 }}>
+                <Ionicons name="document-text-outline" size={20} color="#1a73e8" />
+              </Text>
               <View style={{flex: 1}}>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, {marginBottom: 0}]}
                   placeholder="Description"
                   value={newEvent.summary}
                   onChangeText={(text) => setNewEvent({ ...newEvent, summary: text })}
@@ -442,7 +441,7 @@ const EventModal: React.FC<EventModalProps> = ({
             </View>
 
             {/* Séparateur au-dessus de la section rappels */}
-            <View style={[styles.separator, {marginTop: 10, marginBottom: 3}]} />
+            <View style={[styles.separator, {marginTop: 15, marginBottom: 3}]} />
 
             {/* Section des rappels, sans séparateur entre les rappels et le bouton */}
             <View style={styles.reminderBlock}>
@@ -463,7 +462,9 @@ const EventModal: React.FC<EventModalProps> = ({
                     style={[styles.addReminderButton, { alignSelf: 'center' }]}
                     onPress={addReminder}
                   >
-                    <Ionicons name="add-circle-outline" size={20} color="#1a73e8" />
+                    <Text>
+                      <Ionicons name="add-circle-outline" size={20} color="#1a73e8" />
+                    </Text>
                     <Text style={styles.addReminderText}>
                       Ajouter un autre rappel
                     </Text>
@@ -476,7 +477,7 @@ const EventModal: React.FC<EventModalProps> = ({
                 >
                   <Ionicons name="alarm-outline" size={20} color="#1a73e8" />
                   <Text style={styles.addReminderText}>
-                    Configurer un rappel
+                    Définir un rappel
                   </Text>
                 </TouchableOpacity>
               )}
