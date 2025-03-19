@@ -88,36 +88,61 @@ class DatabaseService {
     }
   }
 
+  // Modifier la méthode displayTableContent pour nettoyer les logs et afficher les rappels
+
   private async displayTableContent() {
     try {
-      const result = await this.db.getAllAsync<Event>(
+      // 1. Récupérer les événements
+      const events = await this.db.getAllAsync<Event>(
         'SELECT * FROM events ORDER BY start_date'
       );
-      console.log('📅 Current Events in Database:');
+
+      // 2. Afficher les événements avec un en-tête simple
+      console.log('📅 Événements en base de données:');
       console.log('================================');
-      if (result && result.length > 0) {
-        result.forEach(event => {
+
+      if (events && events.length > 0) {
+        // Pour chaque événement
+        for (const event of events) {
           // Trouver la catégorie pour l'affichage
           const category = EVENT_CATEGORIES.find(cat => cat.id === (event.category || 'default'));
           const categoryLabel = category ? category.label : 'Par défaut';
           
+          // Récupérer les rappels associés
+          const reminders = await this.getRemindersForEvent(Number(event.id));
+          
+          // Formater l'affichage principal de l'événement avec un espacement plus propre
           console.log(`
-              🎯 ID: ${event.id}
-              📝 Title: ${event.title}
-              📋 Summary: ${event.summary || 'N/A'}
-              ⏰ Start: ${new Date(event.start_date).toLocaleString()}
-              🔚 End: ${new Date(event.end_date).toLocaleString()}
-              📆 Full Day: ${Boolean(event.is_full_day) ? 'Yes' : 'No'}
-              🏷️ Category: ${categoryLabel}
-              ⏱️ Created: ${event.created_at}
-              --------------------------------`);
-        });
+🎯 ID: ${event.id}
+📝 Title: ${event.title}
+📋 Summary: ${event.summary || 'N/A'}
+⏰ Start: ${new Date(event.start_date).toLocaleString('fr-FR')}
+🔚 End: ${new Date(event.end_date).toLocaleString('fr-FR')}
+📆 Full Day: ${Boolean(event.is_full_day) ? 'Yes' : 'No'}
+🏷️ Category: ${categoryLabel}
+⏱️ Created: ${event.created_at}`);
+          
+          // Afficher les rappels associés, s'il y en a
+          if (reminders.length > 0) {
+            console.log(`🔔 Rappels (${reminders.length}):`);
+            reminders.forEach(reminder => {
+              const unitLabel = reminder.unit === 'minute' ? 'minute(s)' : 
+                             reminder.unit === 'hour' ? 'heure(s)' : 'jour(s)';
+              console.log(`   - ${reminder.time} ${unitLabel} avant`);
+            });
+          } else {
+            console.log('🔔 Aucun rappel configuré');
+          }
+          
+          console.log('--------------------------------');
+        }
       } else {
-        console.log('No events in database');
+        console.log('Aucun événement dans la base de données');
       }
       console.log('================================\n');
+
     } catch (error) {
-      console.error('Error displaying table content:', error);
+      console.error('Erreur lors de l\'affichage du contenu de la table:', error);
     }
   }
 
@@ -137,6 +162,7 @@ class DatabaseService {
       
       // Ajouter les rappels si présents
       if (event.reminders && event.reminders.length > 0) {
+        console.log(`Adding ${event.reminders.length} reminders for event ${eventId}`);
         for (const reminder of event.reminders) {
           await this.addReminder(eventId, reminder);
         }
@@ -197,8 +223,12 @@ class DatabaseService {
       const events = await this.db.getAllAsync<Event>(
         'SELECT id, title, summary, start_date, end_date, is_full_day, created_at, category FROM events ORDER BY start_date'
       );
-      return events.map(event => {
-        console.log("Event from DB:", event.id, "is_full_day:", event.is_full_day); // Debug log
+      
+      // Transformation des événements avec leurs rappels
+      const eventsWithReminders = await Promise.all(events.map(async event => {
+        // Récupérer les rappels pour cet événement
+        const reminders = await this.getRemindersForEvent(Number(event.id));
+        
         return {
           id: event.id,
           title: event.title,
@@ -209,23 +239,27 @@ class DatabaseService {
           end_date: event.end_date,
           isFullDay: event.is_full_day === 1, // Conversion explicite et stricte
           created_at: event.created_at,
-          category: event.category || 'default' // Ajout de la catégorie
+          category: event.category || 'default',
+          reminders: reminders // Ajout des rappels
         };
-      });
+      }));
+      
+      return eventsWithReminders;
     } catch (error) {
       console.error('Error getting events:', error);
       return [];
     }
   }
 
-  async updateEvent(id: string, event: { title: string; summary?: string; start: string; end: string; isFullDay?: boolean; category?: string }): Promise<void> {
+  async updateEvent(id: string, event: { title: string; summary?: string; start: string; end: string; isFullDay?: boolean; category?: string; reminders?: Reminder[] }): Promise<void> {
     try {
       console.log("⚙️ Mise à jour de l'événement :", id);
       console.log("📊 Données :", {
         title: event.title,
         summary: event.summary,
         isFullDay: event.isFullDay,
-        category: event.category
+        category: event.category,
+        reminders: event.reminders?.length || 0
       });
       
       // Pour les événements fullday, reformater les dates pour s'assurer qu'elles sont 00:00 et 23:59
@@ -249,6 +283,20 @@ class DatabaseService {
         'UPDATE events SET title = ?, summary = ?, start_date = ?, end_date = ?, is_full_day = ?, category = ? WHERE id = ?',
         [event.title, event.summary || null, startDate, endDate, event.isFullDay ? 1 : 0, event.category || 'default', id]
       );
+      
+      // Gestion des rappels lors de la mise à jour
+      if (event.reminders !== undefined) {
+        // 1. Supprimer tous les rappels existants
+        await this.db.runAsync('DELETE FROM reminders WHERE event_id = ?', [id]);
+        
+        // 2. Ajouter les nouveaux rappels
+        if (event.reminders && event.reminders.length > 0) {
+          console.log(`Updating ${event.reminders.length} reminders for event ${id}`);
+          for (const reminder of event.reminders) {
+            await this.addReminder(Number(id), reminder);
+          }
+        }
+      }
       
       console.log("✅ Événement mis à jour avec succès");
       await this.displayTableContent();

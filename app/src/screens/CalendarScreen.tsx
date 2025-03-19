@@ -796,6 +796,9 @@ const handleEditEvent = () => {
   setSelectedStartTime(startTime);
   setSelectedEndTime(endTime);
   
+  // Récupérer ou initialiser la liste des rappels
+  const reminders = selectedEvent.reminders || [];
+  
   // Préparer l'événement pour l'édition
   const eventToEdit = {
     id: selectedEvent.id,
@@ -804,7 +807,8 @@ const handleEditEvent = () => {
     start: selectedEvent.start,
     end: selectedEvent.end,
     isFullDay: selectedEvent.isFullDay || false,
-    category: selectedEvent.category || 'default'
+    category: selectedEvent.category || 'default',
+    reminders: reminders // Ajout des rappels existants
   };
   
   // Mettre à jour l'état newEvent
