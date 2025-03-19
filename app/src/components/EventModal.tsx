@@ -347,9 +347,10 @@ const EventModal: React.FC<EventModalProps> = ({
 
             {/* Bloc des dates/heures */}
             <View style={styles.dateTimeBlock}>
-              {/* Toggle pour journée entière */}
+              {/* Toggle pour journée entière avec icône d'horloge */}
               <View style={[styles.switchContainer, {paddingVertical: 8, marginBottom: 8}]}>
                 <View style={styles.switchLabelContainer}>
+                  <Ionicons name="time-outline" size={20} color="#1a73e8" style={{marginRight: 10}} />
                   <Text style={styles.switchLabel}>Journée entière</Text>
                 </View>
                 <Switch
@@ -416,13 +417,29 @@ const EventModal: React.FC<EventModalProps> = ({
             {/* Séparateur en dessous de la date de fin - réduire la marge au-dessus */}
             <View style={[styles.separator, {marginTop: 3, marginBottom: 20}]} />
 
-            <TextInput
-              style={styles.input}
-              placeholder="Description"
-              value={newEvent.summary}
-              onChangeText={(text) => setNewEvent({ ...newEvent, summary: text })}
-              multiline
-            />
+            {/* Description avec icône à l'extérieur */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              marginBottom: 15,
+              paddingHorizontal: 10
+            }}>
+              <Ionicons 
+                name="document-text-outline" 
+                size={20} 
+                color="#1a73e8" 
+                style={{marginRight: 10, marginTop: 12}}
+              />
+              <View style={{flex: 1}}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Description"
+                  value={newEvent.summary}
+                  onChangeText={(text) => setNewEvent({ ...newEvent, summary: text })}
+                  multiline
+                />
+              </View>
+            </View>
 
             {/* Séparateur au-dessus de la section rappels */}
             <View style={[styles.separator, {marginTop: 10, marginBottom: 3}]} />
