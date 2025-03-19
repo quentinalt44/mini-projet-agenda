@@ -54,6 +54,17 @@ interface EventModalProps {
   onUpdateReminders?: (reminders: Reminder[]) => void;
 }
 
+// 2. Définition des options de rappel
+const REMINDER_OPTIONS: Array<{ id: string; label: string; time: number; unit: 'minute' | 'hour' | 'day' }> = [
+  { id: '10min', label: '10 minutes avant', time: 10, unit: 'minute' },
+  { id: '30min', label: '30 minutes avant', time: 30, unit: 'minute' },
+  { id: '1hour', label: '1 heure avant', time: 1, unit: 'hour' },
+  { id: '2hour', label: '2 heures avant', time: 2, unit: 'hour' },
+  { id: '1day', label: '1 jour avant', time: 1, unit: 'day' },
+  { id: '2day', label: '2 jours avant', time: 2, unit: 'day' },
+  { id: 'custom', label: 'Rappel personnalisé', time: 0, unit: 'minute' },
+];
+
 const EventModal: React.FC<EventModalProps> = ({
   isVisible,
   mode,
@@ -81,6 +92,9 @@ const EventModal: React.FC<EventModalProps> = ({
 
   // Ajouter cet état pour gérer la visibilité du picker de catégorie
   const [isCategoryPickerVisible, setIsCategoryPickerVisible] = useState(false);
+  
+  // État pour gérer la visibilité du picker de rappel
+  const [isReminderPickerVisible, setIsReminderPickerVisible] = useState(false);
 
   // Nouvel état pour les rappels
   const [eventReminders, setEventReminders] = useState<Reminder[]>([]);
@@ -185,15 +199,31 @@ const EventModal: React.FC<EventModalProps> = ({
     // Mettre une majuscule au premier caractère
     return formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
   };
-
+  
   // Fonction pour ajouter un nouveau rappel
   const addReminder = () => {
-    const newReminder: Reminder = {
-      id: `reminder-${Date.now()}`,
-      time: 15,
-      unit: 'minute'
-    };
-    setEventReminders([...eventReminders, newReminder]);
+    setIsReminderPickerVisible(true);
+  };
+  
+  // Fonction pour gérer la sélection d'un rappel
+  const handleReminderSelection = (option: { time: number; unit: 'minute' | 'hour' | 'day'; id: string }) => {
+    if (option.id === 'custom') {
+      // Logique pour un rappel personnalisé
+      const newReminder: Reminder = {
+        id: `reminder-${Date.now()}`,
+        time: 15,
+        unit: 'minute'
+      };
+      setEventReminders([...eventReminders, newReminder]);
+    } else {
+      const newReminder: Reminder = {
+        id: `reminder-${Date.now()}`,
+        time: option.time,
+        unit: option.unit
+      };
+      setEventReminders([...eventReminders, newReminder]);
+    }
+    setIsReminderPickerVisible(false);
   };
 
   // Fonction pour mettre à jour un rappel
@@ -411,9 +441,9 @@ const EventModal: React.FC<EventModalProps> = ({
                     />
                   ))}
                   
-                  {/* Bouton "Ajouter un autre rappel" sans séparateur */}
+                  {/* Bouton "Ajouter un autre rappel" centré */}
                   <TouchableOpacity 
-                    style={styles.addReminderButton}
+                    style={[styles.addReminderButton, { alignSelf: 'center' }]}
                     onPress={addReminder}
                   >
                     <Ionicons name="add-circle-outline" size={20} color="#1a73e8" />
@@ -424,7 +454,7 @@ const EventModal: React.FC<EventModalProps> = ({
                 </>
               ) : (
                 <TouchableOpacity 
-                  style={styles.addReminderButton}
+                  style={[styles.addReminderButton, { alignSelf: 'center' }]}
                   onPress={addReminder}
                 >
                   <Ionicons name="alarm-outline" size={20} color="#1a73e8" />
@@ -493,6 +523,53 @@ const EventModal: React.FC<EventModalProps> = ({
           </View>
         </Modal>
       )}
+
+      {/* Modal pour la sélection des rappels */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isReminderPickerVisible}
+        onRequestClose={() => setIsReminderPickerVisible(false)}
+      >
+        <View style={styles.pickerModalContainer}>
+          <View style={styles.categoryModalContent}>
+            <Text style={styles.categoryModalTitle}>Configurer un rappel</Text>
+            
+            {REMINDER_OPTIONS
+              .filter(option => {
+                if (option.id === 'custom') return true;
+                return !eventReminders.some(
+                  reminder => 
+                    reminder.time === option.time && 
+                    reminder.unit === option.unit
+                );
+              })
+              .map((option, index, filteredArray) => (
+                <TouchableOpacity
+                  key={`reminder-option-${index}`}
+                  style={[
+                    styles.categoryOption, 
+                    index === filteredArray.length - 1 && { borderBottomWidth: 0 }
+                  ]}
+                  onPress={() => handleReminderSelection(option)}
+                >
+                  <View style={styles.categoryRadioContainer}>
+                    <View style={styles.categoryRadio} />
+                    <Text style={styles.categoryOptionText}>{option.label}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            }
+            
+            <TouchableOpacity
+              style={styles.categoryCloseButton}
+              onPress={() => setIsReminderPickerVisible(false)}
+            >
+              <Text style={styles.pickerCloseButtonText}>Annuler</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 };
