@@ -9,7 +9,8 @@ import {
   SafeAreaView,
   Modal,
   Button,
-  Platform
+  Platform,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -77,9 +78,25 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
   };
   
   // Gérer le changement du toggle
-  const toggleWeekNumbers = (value: boolean) => {
+  const toggleWeekNumbers = async (value: boolean) => {
     setShowWeekNumbers(value);
-    saveSettings('showWeekNumbers', value);
+    try {
+      await AsyncStorage.setItem('showWeekNumbers', value.toString());
+      // Aucune alerte ici
+    } catch (error) {
+      console.error('Error saving weekNumbers preference:', error);
+    }
+  };
+
+  // Même chose pour le premier jour de la semaine
+  const toggleFirstDayOfWeek = async (value: number) => {
+    setFirstDayOfWeek(value);
+    try {
+      await AsyncStorage.setItem('firstDayOfWeek', value.toString());
+      // Aucune alerte ici
+    } catch (error) {
+      console.error('Error saving first day preference:', error);
+    }
   };
   
   // Obtenir le nom du jour à partir de sa valeur
@@ -90,8 +107,7 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
   
   // Sélectionner un nouveau jour de la semaine
   const selectFirstDayOfWeek = (value: number) => {
-    setFirstDayOfWeek(value);
-    saveSettings('firstDayOfWeek', value);
+    toggleFirstDayOfWeek(value);
     setWeekdayModalVisible(false);
   };
   

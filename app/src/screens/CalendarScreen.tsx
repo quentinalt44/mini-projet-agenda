@@ -18,6 +18,7 @@ import EventModal from '../components/EventModal';
 import EventDetailsModal from '../components/EventDetailsModal';
 import ModalWrapper from '../components/ModalWrapper';
 import styles from '../styles/styles';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 //import { formatDate, formatTime } from '../utils/dateUtils';
 
 // Define event categories with their colors
@@ -162,9 +163,31 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
   const [modalKey, setModalKey] = useState(Date.now());
+  const [showWeekNumbers, setShowWeekNumbers] = useState(false);
+  const [firstDayOfWeek, setFirstDayOfWeek] = useState(1); // 1 pour lundi
 
   useEffect(() => {
-    loadEvents();
+    const loadPreferencesAndEvents = async () => {
+      try {
+        // Charger les préférences
+        const weekNumbers = await AsyncStorage.getItem('showWeekNumbers');
+        if (weekNumbers !== null) {
+          setShowWeekNumbers(weekNumbers === 'true');
+        }
+        
+        const firstDay = await AsyncStorage.getItem('firstDayOfWeek');
+        if (firstDay !== null) {
+          setFirstDayOfWeek(parseInt(firstDay));
+        }
+      } catch (error) {
+        console.error('Error loading preferences:', error);
+      }
+      
+      // Charger les événements
+      await loadEvents();
+    };
+    
+    loadPreferencesAndEvents();
   }, []);
 
   const loadEvents = async () => {
@@ -593,6 +616,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
             ref={calendarRef}
             items={loadItemsForMonth({ dateString: selectedDate })}
             selected={selectedDate}
+            showWeekNumbers={showWeekNumbers}
+            firstDay={firstDayOfWeek}
             renderEmptyDate={() => (
               <View style={styles.emptyDate}>
                 <Text>Pas d'événement</Text>
@@ -785,7 +810,6 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
             hideExtraDays={false}
             onDayPress={handleDayPress}
             current={selectedDate}
-            firstDay={1}
             />
         );
     }
