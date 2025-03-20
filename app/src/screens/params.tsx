@@ -35,6 +35,9 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
   const [firstDayOfWeek, setFirstDayOfWeek] = useState(1);
   const [defaultStartHour, setDefaultStartHour] = useState(9);
   const [defaultEndHour, setDefaultEndHour] = useState(10);
+  const [defaultDuration, setDefaultDuration] = useState(60); // 60 minutes par défaut
+  const [durationModalVisible, setDurationModalVisible] = useState(false);
+  const [aboutModalVisible, setAboutModalVisible] = useState(false);
   
   // États pour les modales
   const [weekdayModalVisible, setWeekdayModalVisible] = useState(false);
@@ -49,11 +52,13 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
         const firstDay = await AsyncStorage.getItem('firstDayOfWeek');
         const startHour = await AsyncStorage.getItem('defaultStartHour');
         const endHour = await AsyncStorage.getItem('defaultEndHour');
+        const duration = await AsyncStorage.getItem('defaultDuration');
         
         if (weekNumbers !== null) setShowWeekNumbers(weekNumbers === 'true');
         if (firstDay !== null) setFirstDayOfWeek(Number(firstDay));
         if (startHour !== null) setDefaultStartHour(Number(startHour));
         if (endHour !== null) setDefaultEndHour(Number(endHour));
+        if (duration !== null) setDefaultDuration(Number(duration));
       } catch (error) {
         console.error('Erreur lors du chargement des paramètres:', error);
       }
@@ -111,6 +116,28 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
     saveSettings('defaultEndHour', value);
     setEndHourModalVisible(false);
   };
+
+  // Ajouter une fonction pour formater la durée
+  const formatDuration = (minutes: number) => {
+    if (minutes < 60) {
+      return `${minutes} minutes`;
+    } else if (minutes === 60) {
+      return '1 heure';
+    } else if (minutes % 60 === 0) {
+      return `${minutes / 60} heures`;
+    } else {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${hours}h${mins}`;
+    }
+  };
+
+  // Ajouter une fonction pour sélectionner la durée
+  const selectDefaultDuration = (value: number) => {
+    setDefaultDuration(value);
+    saveSettings('defaultDuration', value);
+    setDurationModalVisible(false);
+  };
   
   // Format d'affichage de l'heure
   const formatHour = (hour: number) => `${hour}:00`;
@@ -125,6 +152,9 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
           <Ionicons name="arrow-back" size={24} color="#1a73e8" />
         </TouchableOpacity>
         <Text style={styles.title}>Paramètres</Text>
+        <TouchableOpacity onPress={() => setAboutModalVisible(true)} style={styles.infoButton}>
+          <Ionicons name="information-circle-outline" size={24} color="#1a73e8" />
+        </TouchableOpacity>
       </View>
       
       <ScrollView style={styles.scrollContent}>
@@ -173,7 +203,7 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
             </TouchableOpacity>
           </View>
           
-          <View style={styles.lastSettingRow}>
+          <View style={styles.settingRow}>
             <View style={styles.settingLabelContainer}>
               <Text style={styles.settingLabel}>Heure de fin par défaut</Text>
               <Text style={styles.settingDescription}>{formatHour(defaultEndHour)}</Text>
@@ -182,13 +212,16 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
               <Text style={styles.changeButton}>Modifier</Text>
             </TouchableOpacity>
           </View>
-        </View>
-        
-        {/* Section À propos */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>À propos</Text>
-          <Text style={styles.aboutText}>Version 1.6.9</Text>
-          <Text style={styles.aboutText}>© 2025 Mini-Projet Agenda</Text>
+
+          <View style={styles.lastSettingRow}>
+            <View style={styles.settingLabelContainer}>
+              <Text style={styles.settingLabel}>Durée par défaut</Text>
+              <Text style={styles.settingDescription}>{formatDuration(defaultDuration)}</Text>
+            </View>
+            <TouchableOpacity onPress={() => setDurationModalVisible(true)}>
+              <Text style={styles.changeButton}>Modifier</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
       
@@ -315,6 +348,77 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Modal pour la durée par défaut */}
+      <Modal
+        visible={durationModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setDurationModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Durée par défaut</Text>
+            
+            <ScrollView style={styles.modalScroll}>
+              {[15, 30, 45, 60, 90, 120, 180, 240].map((duration) => (
+                <TouchableOpacity 
+                  key={`duration-${duration}`} 
+                  style={[
+                    styles.modalOption,
+                    defaultDuration === duration && styles.selectedOption
+                  ]}
+                  onPress={() => selectDefaultDuration(duration)}
+                >
+                  <Text style={[
+                    styles.modalOptionText,
+                    defaultDuration === duration && styles.selectedOptionText
+                  ]}>
+                    {formatDuration(duration)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            
+            <TouchableOpacity 
+              style={styles.modalCancelButton}
+              onPress={() => setDurationModalVisible(false)}
+            >
+              <Text style={styles.modalCancelText}>Annuler</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal pour les informations "À propos" */}
+      <Modal
+        visible={aboutModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setAboutModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.aboutModalContent}>
+            <Text style={styles.modalTitle}>À propos</Text>
+            
+            <View style={styles.aboutContent}>
+              <Text style={styles.aboutText}>Version 1.6.9</Text>
+              <Text style={styles.aboutText}>© 2025 Mini-Projet Agenda SRT4</Text>
+              <Text style={styles.aboutText}>Auteurs : Quentin ALT & Antoine LEBARBEY</Text>
+              <Text style={styles.aboutDescription}>
+                Application développée dans le cadre du cours de développement d'applications mobiles.
+              </Text>
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.modalCloseButton}
+              onPress={() => setAboutModalVisible(false)}
+            >
+              <Text style={styles.modalCloseText}>Fermer</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -343,6 +447,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#1a73e8',
+  },
+  infoButton: {
+    padding: 8,
+    marginLeft: 'auto',
   },
   section: {
     padding: 16,
@@ -417,6 +525,22 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+  aboutModalContent: {
+    width: '80%',
+    maxHeight: '70%',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -459,6 +583,27 @@ const styles = StyleSheet.create({
   },
   modalCancelText: {
     color: '#e53935',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  aboutContent: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  aboutDescription: {
+    fontSize: 14,
+    color: '#5f6368',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  modalCloseButton: {
+    marginTop: 20,
+    padding: 15,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalCloseText: {
+    color: '#1a73e8',
     fontSize: 16,
     fontWeight: '500',
   },
