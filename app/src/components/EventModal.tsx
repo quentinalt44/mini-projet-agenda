@@ -283,8 +283,16 @@ const EventModal: React.FC<EventModalProps> = ({
       // Mettre à jour l'heure de début
       setSelectedStartTime(updatedStartTime);
       
-      // Ajuster l'heure de fin si nécessaire pour maintenir cohérence
-      if (updatedStartTime >= selectedEndTime) {
+      // Vérifier si les dates de début et de fin sont le même jour
+      const sameDay = 
+        selectedEndTime.getFullYear() === updatedStartTime.getFullYear() &&
+        selectedEndTime.getMonth() === updatedStartTime.getMonth() &&
+        selectedEndTime.getDate() === updatedStartTime.getDate();
+      
+      // Ajuster l'heure de fin dans deux cas :
+      // 1. Si la nouvelle heure de début est après l'heure de fin
+      // 2. Si les dates sont le même jour et qu'on modifie l'heure (pas la date)
+      if (updatedStartTime >= selectedEndTime || (sameDay && currentPicker.current === 'start_time')) {
         const updatedEndTime = new Date(updatedStartTime.getTime());
         updatedEndTime.setHours(updatedStartTime.getHours() + 1);
         setSelectedEndTime(updatedEndTime);
