@@ -250,6 +250,96 @@ const EventModal: React.FC<EventModalProps> = ({
     );
   };
 
+  // Utilisation directe du prop handlePickerChange
+  const handleDateTimeChange = (event: any, selectedDate?: Date) => {
+    // Quitter si aucune date n'est sélectionnée
+    if (!selectedDate) return;
+    
+    // Fermer le picker sur Android après sélection
+    if (Platform.OS === 'android') {
+      setCurrentPicker({ show: false, current: undefined });
+    }
+    
+    // Créer une copie de la date pour éviter les références partagées
+    const newDate = new Date(selectedDate.getTime());
+    
+    if (currentPicker.current?.startsWith('start')) {
+      // Pour date de début
+      let updatedStartTime;
+      
+      if (currentPicker.current === 'start_date') {
+        // Quand on change uniquement la date, préserver l'heure existante
+        updatedStartTime = new Date(selectedStartTime.getTime());
+        updatedStartTime.setFullYear(newDate.getFullYear());
+        updatedStartTime.setMonth(newDate.getMonth());
+        updatedStartTime.setDate(newDate.getDate());
+      } else {
+        // Quand on change l'heure, préserver la date existante
+        updatedStartTime = new Date(selectedStartTime.getTime());
+        updatedStartTime.setHours(newDate.getHours());
+        updatedStartTime.setMinutes(newDate.getMinutes());
+      }
+      
+      // Mettre à jour l'heure de début
+      setSelectedStartTime(updatedStartTime);
+      
+      // Ajuster l'heure de fin si nécessaire pour maintenir cohérence
+      if (updatedStartTime >= selectedEndTime) {
+        const updatedEndTime = new Date(updatedStartTime.getTime());
+        updatedEndTime.setHours(updatedStartTime.getHours() + 1);
+        setSelectedEndTime(updatedEndTime);
+        
+        // Mettre à jour l'événement avec les deux heures
+        setNewEvent({
+          ...newEvent,
+          start: updatedStartTime.toISOString(),
+          end: updatedEndTime.toISOString()
+        });
+      } else {
+        // Mettre à jour uniquement l'heure de début
+        setNewEvent({
+          ...newEvent,
+          start: updatedStartTime.toISOString()
+        });
+      }
+    } else if (currentPicker.current?.startsWith('end')) {
+      // Pour date de fin
+      let updatedEndTime;
+      
+      if (currentPicker.current === 'end_date') {
+        // Quand on change uniquement la date, préserver l'heure existante
+        updatedEndTime = new Date(selectedEndTime.getTime());
+        updatedEndTime.setFullYear(newDate.getFullYear());
+        updatedEndTime.setMonth(newDate.getMonth());
+        updatedEndTime.setDate(newDate.getDate());
+      } else {
+        // Quand on change l'heure, préserver la date existante
+        updatedEndTime = new Date(selectedEndTime.getTime());
+        updatedEndTime.setHours(newDate.getHours());
+        updatedEndTime.setMinutes(newDate.getMinutes());
+      }
+      
+      // Vérifier que la date de fin est après la date de début
+      if (updatedEndTime <= selectedStartTime) {
+        // Si la date est invalide, ajouter 1h à la date de début
+        updatedEndTime = new Date(selectedStartTime.getTime());
+        updatedEndTime.setHours(selectedStartTime.getHours() + 1);
+      }
+      
+      // Mettre à jour l'heure de fin
+      setSelectedEndTime(updatedEndTime);
+      setNewEvent({
+        ...newEvent,
+        end: updatedEndTime.toISOString()
+      });
+    }
+    
+    // Pour iOS, nous devons explicitement fermer le picker
+    if (Platform.OS === 'ios' && currentPicker.current?.includes('time')) {
+      setCurrentPicker({ show: false, current: undefined });
+    }
+  };
+
   return (
     <Modal
       animationType="slide"
@@ -510,10 +600,16 @@ const EventModal: React.FC<EventModalProps> = ({
           animationType="fade"
           transparent={true}
           visible={currentPicker.show}
+          onRequestClose={() => setCurrentPicker({ show: false, current: undefined })}
         >
           <View style={styles.pickerModalContainer}>
             <View style={styles.pickerModalContent}>
+              <Text style={styles.modalTitle}>
+                {currentPicker.current?.includes('start') ? 'Date de début' : 'Date de fin'}
+              </Text>
+              
               <DateTimePicker
+                testID="dateTimePicker"
                 value={
                   currentPicker.current?.startsWith('start') 
                     ? selectedStartTime 
@@ -521,18 +617,22 @@ const EventModal: React.FC<EventModalProps> = ({
                 }
                 mode={currentPicker.current?.endsWith('date') ? 'date' : 'time'}
                 is24Hour={true}
-                // Changer le mode d'affichage selon la plateforme
                 display={Platform.OS === 'ios' 
                   ? (currentPicker.current?.endsWith('date') ? 'inline' : 'spinner') 
-                  : (currentPicker.current?.endsWith('date') ? 'calendar' : 'clock')
+                  : (currentPicker.current?.endsWith('date') ? 'default' : 'default')
                 }
-                onChange={handlePickerChange}
+                onChange={handleDateTimeChange}
                 locale="fr-FR"
+                minimumDate={
+                  // Si on modifie la date de fin, la date minimum est la date de début
+                  currentPicker.current?.startsWith('end') ? selectedStartTime : undefined
+                }
               />
+              
               <TouchableOpacity
                 style={styles.pickerCloseButton}
                 onPress={() => {
-                  setCurrentPicker({ ...currentPicker, show: false });
+                  setCurrentPicker({ show: false, current: undefined });
                 }}
               >
                 <Text style={styles.pickerCloseButtonText}>Valider</Text>
