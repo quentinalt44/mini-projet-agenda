@@ -47,7 +47,14 @@ const MapScreen: React.FC<MapScreenProps> = ({ location, onClose }) => {
             longitude: location.longitude
           }}
           title={location.title || "Emplacement"}
-        />
+          pinColor={location.title === "Ma position" ? "#4285F4" : "red"} // Bleu pour la position de l'utilisateur
+        >
+          {location.title === "Ma position" && (
+            <View style={styles.userLocationMarker}>
+              <View style={styles.userLocationDot} />
+            </View>
+          )}
+        </Marker>
       </MapView>
     </SafeAreaView>
   );
@@ -80,6 +87,22 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  userLocationMarker: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(66, 133, 244, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(66, 133, 244, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userLocationDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#4285F4',
   },
 });
 

@@ -19,6 +19,8 @@ import EventDetailsModal from '../components/EventDetailsModal';
 import ModalWrapper from '../components/ModalWrapper';
 import styles from '../styles/styles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
+
 //import { formatDate, formatTime } from '../utils/dateUtils';
 
 // Define event categories with their colors
@@ -171,6 +173,9 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress, onMapP
   const [defaultStartHour, setDefaultStartHour] = useState(9);
   const [defaultEndHour, setDefaultEndHour] = useState(10);
   const [defaultDuration, setDefaultDuration] = useState(60);
+
+  const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
 
   useEffect(() => {
     const loadPreferencesAndEvents = async () => {
@@ -999,6 +1004,50 @@ const handleEditEvent = () => {
     }, 100);
   };
 
+  const getUserLocation = async () => {
+    setLocationLoading(true);
+    
+    try {
+      // Demander la permission d'accéder à la localisation
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          "Permission refusée",
+          "L'accès à votre position est nécessaire pour afficher votre emplacement sur la carte.",
+          [{ text: "OK" }]
+        );
+        setLocationLoading(false);
+        return;
+      }
+      
+      // Obtenir la position actuelle
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      
+      const userPos = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        title: "Ma position"
+      };
+      
+      setUserLocation(userPos);
+      
+      // Naviguer vers la carte avec la position de l'utilisateur
+      onMapPress(userPos);
+    } catch (error) {
+      console.error("Erreur lors de l'obtention de la position:", error);
+      Alert.alert(
+        "Erreur de localisation",
+        "Impossible d'obtenir votre position actuelle. Veuillez vérifier que la localisation est activée.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Drawer */}
@@ -1089,9 +1138,14 @@ const handleEditEvent = () => {
       {/* Maps FAB */}
       <TouchableOpacity
         style={[styles.fab, styles.mapFab]}
-        onPress={() => onMapPress({ latitude: 48.8566, longitude: 2.3522, title: 'Paris' })}
+        onPress={getUserLocation}
+        disabled={locationLoading}
       >
-        <Ionicons name="map-outline" size={26} color="#1a73e8" />
+        <Ionicons 
+          name={locationLoading ? "hourglass-outline" : "map-outline"} 
+          size={26} 
+          color="#1a73e8" 
+        />
       </TouchableOpacity>
 
       {/* FAB */}
