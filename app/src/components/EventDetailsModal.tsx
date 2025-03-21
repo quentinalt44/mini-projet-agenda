@@ -42,6 +42,7 @@ interface EventDetailsModalProps {
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onMapPress: (location: any) => void; // Nouvelle prop
 }
 
 const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
@@ -50,6 +51,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   onClose,
   onEdit,
   onDelete,
+  onMapPress,
 }) => {
   // État séparé pour la carte en plein écran
   const [showMapModal, setShowMapModal] = useState(false);
@@ -115,6 +117,18 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
       setShowMapModal(false);
     }
   }, [isVisible]);
+
+  // Ajouter ceci juste avant le return principal
+  useEffect(() => {
+    console.log("showMapModal state changed to:", showMapModal);
+  }, [showMapModal]);
+
+  // Modifier la façon dont vous gérez la modal de carte pour utiliser une approche plus directe
+  const toggleMapModal = () => {
+    console.log("Current showMapModal:", showMapModal);
+    console.log("Setting showMapModal to:", !showMapModal);
+    setShowMapModal(!showMapModal);
+  };
 
   return (
     <>
@@ -201,11 +215,14 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                     style={styles.mapExpandButton}
                     onPress={() => {
                       console.log('Expand button pressed!');
-                      setShowMapModal(true);
+                      // Naviguer vers la vue Map avec les données de localisation
+                      onMapPress(location);
+                      // Fermer ce modal
+                      onClose();
                     }}
                   >
-                    <Ionicons name="expand" size={24} color="white" />
-                    <Text style={styles.mapExpandButtonText}>Voir en plein écran</Text>
+                    <Ionicons name="map-outline" size={24} color="white" />
+                    <Text style={styles.mapExpandButtonText}>Voir la carte</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -219,54 +236,6 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
-
-      {/* Modal séparé pour la carte en plein écran */}
-      <Modal
-        animationType="slide" // Changer de 'fade' à 'slide' pour mieux voir ce qui se passe
-        transparent={false}   // Changer à false pour voir si c'est un problème de transparence
-        visible={showMapModal}
-        onRequestClose={() => {
-          console.log('Map modal closing...');
-          setShowMapModal(false);
-        }}
-      >
-        <SafeAreaView style={styles.mapModalContainer}>
-          {hasValidLocation ? (
-            <MapView
-              style={styles.fullScreenMap}
-              region={{
-                latitude: location.latitude,
-                longitude: location.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}
-              scrollEnabled={true}
-              zoomEnabled={true}
-              rotateEnabled={true}
-              pitchEnabled={true}
-            >
-              <Marker
-                coordinate={{
-                  latitude: location.latitude,
-                  longitude: location.longitude
-                }}
-                title={location.title || event.title}
-              />
-            </MapView>
-          ) : (
-            <View style={styles.noLocationContainer}>
-              <Text style={styles.noLocationText}>Aucun emplacement disponible</Text>
-            </View>
-          )}
-          
-          <TouchableOpacity 
-            style={styles.mapBackButton}
-            onPress={() => setShowMapModal(false)}
-          >
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
-        </SafeAreaView>
       </Modal>
     </>
   );

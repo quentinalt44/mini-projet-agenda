@@ -130,6 +130,12 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4
   },
+  mapFab: {
+    bottom: 90,
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: '#1a73e8',
+  },
   emptyDate: {
     backgroundColor: 'white',
     flex: 1,

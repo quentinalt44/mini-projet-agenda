@@ -79,6 +79,7 @@ interface Event {
   end_date?: string;
   category?: string;
   reminders?: Reminder[];  // Ajout de la propriété reminders
+  location?: string;  // Add location property
 }
 
 interface EventUpdateData {
@@ -107,9 +108,10 @@ interface AgendaItems {
 
 interface CalendarScreenProps {
   onSettingsPress: () => void;
+  onMapPress: (location: any) => void;
 }
 
-const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
+const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress, onMapPress }) => {
   const calendarRef = useRef<any>(null);
   const today = new Date();
   const todayString = today.toISOString().split('T')[0];
@@ -1084,6 +1086,14 @@ const handleEditEvent = () => {
       </View>
       {renderCalendar()}
 
+      {/* Maps FAB */}
+      <TouchableOpacity
+        style={[styles.fab, styles.mapFab]}
+        onPress={() => onMapPress({ latitude: 48.8566, longitude: 2.3522, title: 'Paris' })}
+      >
+        <Ionicons name="map-outline" size={26} color="#1a73e8" />
+      </TouchableOpacity>
+
       {/* FAB */}
       <TouchableOpacity
         style={styles.fab}
@@ -1134,11 +1144,17 @@ const handleEditEvent = () => {
           start: selectedEvent?.start || new Date().toISOString(),
           end: selectedEvent?.end || new Date().toISOString(),
           isFullDay: selectedEvent?.isFullDay,
-          category: selectedEvent?.category // Ajouter cette ligne
+          category: selectedEvent?.category, // Ajouter cette ligne
+          location: selectedEvent?.location ? {
+            latitude: 0, // You should parse these from your location string
+            longitude: 0, // or store location data in the correct format
+            title: selectedEvent.location
+          } : undefined
         }}
         onClose={() => setIsDetailsModalVisible(false)}
         onEdit={handleEditEvent}
         onDelete={handleDeleteEvent}
+        onMapPress={onMapPress} // Ajoutez cette ligne
       />
     </View>
   );
