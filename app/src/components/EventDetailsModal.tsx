@@ -170,15 +170,11 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
               </View>
             )}
             
-            {/* Section carte simplifiée - juste une vignette cliquable */}
+            {/* Modifiez la section de vignette de carte pour s'assurer que le toucher est bien capturé */}
             {hasValidLocation && (
               <View style={styles.mapSection}>
                 <Text style={styles.mapLabel}>Emplacement:</Text>
-                <TouchableOpacity 
-                  style={styles.mapThumbnailContainer}
-                  onPress={() => setShowMapModal(true)}
-                  activeOpacity={0.8}
-                >
+                <View style={styles.mapThumbnailContainer}>
                   <MapView
                     style={styles.mapThumbnail}
                     region={{
@@ -199,11 +195,19 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                       }}
                     />
                   </MapView>
-                  <View style={styles.mapOverlay}>
-                    <Text style={styles.mapOverlayText}>Voir la carte</Text>
-                    <Ionicons name="expand" size={18} color="white" />
-                  </View>
-                </TouchableOpacity>
+                  
+                  {/* Un bouton explicite par-dessus la carte */}
+                  <TouchableOpacity 
+                    style={styles.mapExpandButton}
+                    onPress={() => {
+                      console.log('Expand button pressed!');
+                      setShowMapModal(true);
+                    }}
+                  >
+                    <Ionicons name="expand" size={24} color="white" />
+                    <Text style={styles.mapExpandButtonText}>Voir en plein écran</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
             
@@ -219,10 +223,13 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
 
       {/* Modal séparé pour la carte en plein écran */}
       <Modal
-        animationType="fade"
-        transparent={true}
+        animationType="slide" // Changer de 'fade' à 'slide' pour mieux voir ce qui se passe
+        transparent={false}   // Changer à false pour voir si c'est un problème de transparence
         visible={showMapModal}
-        onRequestClose={() => setShowMapModal(false)}
+        onRequestClose={() => {
+          console.log('Map modal closing...');
+          setShowMapModal(false);
+        }}
       >
         <SafeAreaView style={styles.mapModalContainer}>
           {hasValidLocation ? (
@@ -383,16 +390,35 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Plus sombre pour plus de contraste
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10, // Plus grand
     gap: 8,
+    height: 40, // Hauteur fixe pour cliquer plus facilement
   },
   mapOverlayText: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 16, // Plus grand
+    fontWeight: '500',
+  },
+  mapExpandButton: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 8,
+    height: 40,
+  },
+  mapExpandButtonText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: '500',
   },
   
