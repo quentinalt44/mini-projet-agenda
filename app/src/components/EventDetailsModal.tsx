@@ -1,8 +1,19 @@
-import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  Modal, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Alert, 
+  Dimensions,
+  Animated,
+  SafeAreaView
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import MapView, { Marker } from 'react-native-maps';
 
-// Importer les catégories d'événements (assurez-vous que cette constante est définie ici ou importée)
+// Garder les catégories d'événements
 const EVENT_CATEGORIES = [
   { id: 'default', label: 'Par défaut', color: '#1a73e8' },
   { id: 'work', label: 'Travail', color: '#d50000' },
@@ -12,7 +23,6 @@ const EVENT_CATEGORIES = [
   { id: 'other', label: 'Autre', color: '#616161' },
 ];
 
-// Mettez à jour l'interface pour inclure la catégorie
 interface EventDetailsModalProps {
   isVisible: boolean;
   event: {
@@ -22,7 +32,12 @@ interface EventDetailsModalProps {
     start: string;
     end: string;
     isFullDay?: boolean;
-    category?: string; // Ajout de la catégorie
+    category?: string;
+    location?: {
+      latitude: number;
+      longitude: number;
+      title?: string;
+    };
   };
   onClose: () => void;
   onEdit: () => void;
@@ -36,6 +51,24 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   onEdit,
   onDelete,
 }) => {
+  // État séparé pour la carte en plein écran
+  const [showMapModal, setShowMapModal] = useState(false);
+  
+  // Coordonnées par défaut (Paris) si aucun emplacement n'est spécifié
+  const defaultLocation = {
+    latitude: 48.8566,
+    longitude: 2.3522,
+    title: 'Paris'
+  };
+  
+  // Utiliser l'emplacement de l'événement ou l'emplacement par défaut
+  const location = event.location || defaultLocation;
+  
+  // Vérification de la validité de l'emplacement
+  const hasValidLocation = location && 
+    typeof location.latitude === 'number' && 
+    typeof location.longitude === 'number';
+
   // Fonction pour obtenir les informations de la catégorie
   const getCategoryInfo = (categoryId?: string) => {
     const category = EVENT_CATEGORIES.find(cat => cat.id === (categoryId || 'default'));
@@ -76,77 +109,162 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
     });
   };
 
+  // S'assurer que la modale de carte est fermée lorsque la modale principale se ferme
+  useEffect(() => {
+    if (!isVisible) {
+      setShowMapModal(false);
+    }
+  }, [isVisible]);
+
   return (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={isVisible}
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{event.title}</Text>
-            <View style={styles.actions}>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={onEdit}
-              >
-                <Ionicons name="pencil" size={24} color="#1a73e8" />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={handleDelete}
-              >
-                <Ionicons name="trash" size={24} color="#dc3545" />
-              </TouchableOpacity>
+    <>
+      {/* Modal principal des détails de l'événement */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isVisible}
+        onRequestClose={onClose}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.header}>
+              <Text style={styles.title}>{event.title}</Text>
+              <View style={styles.actions}>
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  onPress={onEdit}
+                >
+                  <Ionicons name="pencil" size={24} color="#1a73e8" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  onPress={handleDelete}
+                >
+                  <Ionicons name="trash" size={24} color="#dc3545" />
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
 
-          {/* Ajouter la section catégorie ici */}
-          <View style={styles.categorySection}>
-            <Text style={styles.categoryLabel}>Catégorie:</Text>
-            <View style={styles.categoryBadge}>
-              <View 
-                style={[
-                  styles.categoryColor, 
-                  { backgroundColor: categoryInfo.color }
-                ]} 
+            <View style={styles.categorySection}>
+              <Text style={styles.categoryLabel}>Catégorie:</Text>
+              <View style={styles.categoryBadge}>
+                <View style={[styles.categoryColor, { backgroundColor: categoryInfo.color }]} />
+                <Text style={styles.categoryText}>{categoryInfo.label}</Text>
+              </View>
+            </View>
+
+            <View style={styles.dateSection}>
+              <Text style={styles.dateLabel}>Début:</Text>
+              <Text style={styles.dateText}>{formatDate(event.start)}</Text>
+            </View>
+
+            <View style={styles.dateSection}>
+              <Text style={styles.dateLabel}>Fin:</Text>
+              <Text style={styles.dateText}>{formatDate(event.end)}</Text>
+            </View>
+
+            {event.summary && (
+              <View style={styles.descriptionSection}>
+                <Text style={styles.descriptionLabel}>Description:</Text>
+                <Text style={styles.descriptionText}>{event.summary}</Text>
+              </View>
+            )}
+            
+            {/* Section carte simplifiée - juste une vignette cliquable */}
+            {hasValidLocation && (
+              <View style={styles.mapSection}>
+                <Text style={styles.mapLabel}>Emplacement:</Text>
+                <TouchableOpacity 
+                  style={styles.mapThumbnailContainer}
+                  onPress={() => setShowMapModal(true)}
+                  activeOpacity={0.8}
+                >
+                  <MapView
+                    style={styles.mapThumbnail}
+                    region={{
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
+                    }}
+                    scrollEnabled={false}
+                    zoomEnabled={false}
+                    rotateEnabled={false}
+                    pitchEnabled={false}
+                  >
+                    <Marker
+                      coordinate={{
+                        latitude: location.latitude,
+                        longitude: location.longitude
+                      }}
+                    />
+                  </MapView>
+                  <View style={styles.mapOverlay}>
+                    <Text style={styles.mapOverlayText}>Voir la carte</Text>
+                    <Ionicons name="expand" size={18} color="white" />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
+            
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={onClose}
+            >
+              <Text style={styles.closeButtonText}>Fermer</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal séparé pour la carte en plein écran */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showMapModal}
+        onRequestClose={() => setShowMapModal(false)}
+      >
+        <SafeAreaView style={styles.mapModalContainer}>
+          {hasValidLocation ? (
+            <MapView
+              style={styles.fullScreenMap}
+              region={{
+                latitude: location.latitude,
+                longitude: location.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              }}
+              scrollEnabled={true}
+              zoomEnabled={true}
+              rotateEnabled={true}
+              pitchEnabled={true}
+            >
+              <Marker
+                coordinate={{
+                  latitude: location.latitude,
+                  longitude: location.longitude
+                }}
+                title={location.title || event.title}
               />
-              <Text style={styles.categoryText}>{categoryInfo.label}</Text>
-            </View>
-          </View>
-
-          <View style={styles.dateSection}>
-            <Text style={styles.dateLabel}>Début:</Text>
-            <Text style={styles.dateText}>{formatDate(event.start)}</Text>
-          </View>
-
-          <View style={styles.dateSection}>
-            <Text style={styles.dateLabel}>Fin:</Text>
-            <Text style={styles.dateText}>{formatDate(event.end)}</Text>
-          </View>
-
-          {event.summary && (
-            <View style={styles.descriptionSection}>
-              <Text style={styles.descriptionLabel}>Description:</Text>
-              <Text style={styles.descriptionText}>{event.summary}</Text>
+            </MapView>
+          ) : (
+            <View style={styles.noLocationContainer}>
+              <Text style={styles.noLocationText}>Aucun emplacement disponible</Text>
             </View>
           )}
-
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={onClose}
+          
+          <TouchableOpacity 
+            style={styles.mapBackButton}
+            onPress={() => setShowMapModal(false)}
           >
-            <Text style={styles.closeButtonText}>Fermer</Text>
+            <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
+        </SafeAreaView>
+      </Modal>
+    </>
   );
 };
 
-// Ajouter les nouveaux styles pour la catégorie
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
@@ -194,6 +312,7 @@ const styles = StyleSheet.create({
   },
   descriptionSection: {
     marginTop: 10,
+    marginBottom: 15,
   },
   descriptionLabel: {
     fontSize: 16,
@@ -237,6 +356,76 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 16,
     color: '#2d4150',
+  },
+  
+  // Vignette de carte
+  mapSection: {
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  mapLabel: {
+    fontSize: 16,
+    color: '#5f6368',
+    marginBottom: 8,
+  },
+  mapThumbnailContainer: {
+    height: 150,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  mapThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  mapOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 8,
+  },
+  mapOverlayText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  
+  // Modal carte plein écran
+  mapModalContainer: {
+    flex: 1,
+    backgroundColor: 'black',
+  },
+  fullScreenMap: {
+    width: '100%',
+    height: '100%',
+  },
+  mapBackButton: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  noLocationContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1e1e1e',
+  },
+  noLocationText: {
+    color: 'white',
+    fontSize: 18,
   },
 });
 
