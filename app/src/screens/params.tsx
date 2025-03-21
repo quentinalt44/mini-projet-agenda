@@ -35,7 +35,6 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
   const [showWeekNumbers, setShowWeekNumbers] = useState(false);
   const [firstDayOfWeek, setFirstDayOfWeek] = useState(1);
   const [defaultStartHour, setDefaultStartHour] = useState(9);
-  const [defaultEndHour, setDefaultEndHour] = useState(10);
   const [defaultDuration, setDefaultDuration] = useState(60); // 60 minutes par défaut
   const [durationModalVisible, setDurationModalVisible] = useState(false);
   const [aboutModalVisible, setAboutModalVisible] = useState(false);
@@ -43,7 +42,6 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
   // États pour les modales
   const [weekdayModalVisible, setWeekdayModalVisible] = useState(false);
   const [startHourModalVisible, setStartHourModalVisible] = useState(false);
-  const [endHourModalVisible, setEndHourModalVisible] = useState(false);
   
   // Charger les paramètres au démarrage
   useEffect(() => {
@@ -52,13 +50,11 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
         const weekNumbers = await AsyncStorage.getItem('showWeekNumbers');
         const firstDay = await AsyncStorage.getItem('firstDayOfWeek');
         const startHour = await AsyncStorage.getItem('defaultStartHour');
-        const endHour = await AsyncStorage.getItem('defaultEndHour');
         const duration = await AsyncStorage.getItem('defaultDuration');
         
         if (weekNumbers !== null) setShowWeekNumbers(weekNumbers === 'true');
         if (firstDay !== null) setFirstDayOfWeek(Number(firstDay));
         if (startHour !== null) setDefaultStartHour(Number(startHour));
-        if (endHour !== null) setDefaultEndHour(Number(endHour));
         if (duration !== null) setDefaultDuration(Number(duration));
       } catch (error) {
         console.error('Erreur lors du chargement des paramètres:', error);
@@ -115,22 +111,7 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
   const selectStartHour = (value: number) => {
     setDefaultStartHour(value);
     saveSettings('defaultStartHour', value);
-    
-    // Ajuster l'heure de fin si nécessaire
-    if (value >= defaultEndHour) {
-      const newEndHour = Math.min(value + 1, 23);
-      setDefaultEndHour(newEndHour);
-      saveSettings('defaultEndHour', newEndHour);
-    }
-    
     setStartHourModalVisible(false);
-  };
-  
-  // Sélectionner une nouvelle heure de fin
-  const selectEndHour = (value: number) => {
-    setDefaultEndHour(value);
-    saveSettings('defaultEndHour', value);
-    setEndHourModalVisible(false);
   };
 
   // Ajouter une fonction pour formater la durée
@@ -215,16 +196,6 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
               <Text style={styles.settingDescription}>{formatHour(defaultStartHour)}</Text>
             </View>
             <TouchableOpacity onPress={() => setStartHourModalVisible(true)}>
-              <Text style={styles.changeButton}>Modifier</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.settingRow}>
-            <View style={styles.settingLabelContainer}>
-              <Text style={styles.settingLabel}>Heure de fin par défaut</Text>
-              <Text style={styles.settingDescription}>{formatHour(defaultEndHour)}</Text>
-            </View>
-            <TouchableOpacity onPress={() => setEndHourModalVisible(true)}>
               <Text style={styles.changeButton}>Modifier</Text>
             </TouchableOpacity>
           </View>
@@ -314,50 +285,6 @@ const ParamsScreen: React.FC<ParamsScreenProps> = ({ onClose }) => {
             <TouchableOpacity 
               style={styles.modalCancelButton}
               onPress={() => setStartHourModalVisible(false)}
-            >
-              <Text style={styles.modalCancelText}>Annuler</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-      
-      {/* Modal pour l'heure de fin */}
-      <Modal
-        visible={endHourModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setEndHourModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Heure de fin par défaut</Text>
-            
-            <ScrollView style={styles.modalScroll}>
-              {hours.map((hour) => (
-                <TouchableOpacity 
-                  key={hour} 
-                  style={[
-                    styles.modalOption,
-                    defaultEndHour === hour && styles.selectedOption,
-                    hour <= defaultStartHour && styles.disabledOption
-                  ]}
-                  onPress={() => hour > defaultStartHour ? selectEndHour(hour) : null}
-                  disabled={hour <= defaultStartHour}
-                >
-                  <Text style={[
-                    styles.modalOptionText,
-                    defaultEndHour === hour && styles.selectedOptionText,
-                    hour <= defaultStartHour && styles.disabledOptionText
-                  ]}>
-                    {formatHour(hour)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            
-            <TouchableOpacity 
-              style={styles.modalCancelButton}
-              onPress={() => setEndHourModalVisible(false)}
             >
               <Text style={styles.modalCancelText}>Annuler</Text>
             </TouchableOpacity>

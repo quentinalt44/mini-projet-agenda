@@ -166,10 +166,14 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
   const [showWeekNumbers, setShowWeekNumbers] = useState(false);
   const [firstDayOfWeek, setFirstDayOfWeek] = useState(1); // 1 pour lundi
 
+  const [defaultStartHour, setDefaultStartHour] = useState(9);
+  const [defaultEndHour, setDefaultEndHour] = useState(10);
+  const [defaultDuration, setDefaultDuration] = useState(60);
+
   useEffect(() => {
     const loadPreferencesAndEvents = async () => {
       try {
-        // Charger les préférences
+        // Charger les préférences existantes
         const weekNumbers = await AsyncStorage.getItem('showWeekNumbers');
         if (weekNumbers !== null) {
           setShowWeekNumbers(weekNumbers === 'true');
@@ -178,6 +182,22 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
         const firstDay = await AsyncStorage.getItem('firstDayOfWeek');
         if (firstDay !== null) {
           setFirstDayOfWeek(parseInt(firstDay));
+        }
+        
+        // Charger les heures par défaut
+        const startHour = await AsyncStorage.getItem('defaultStartHour');
+        if (startHour !== null) {
+          setDefaultStartHour(parseInt(startHour));
+        }
+        
+        const endHour = await AsyncStorage.getItem('defaultEndHour');
+        if (endHour !== null) {
+          setDefaultEndHour(parseInt(endHour));
+        }
+        
+        const duration = await AsyncStorage.getItem('defaultDuration');
+        if (duration !== null) {
+          setDefaultDuration(parseInt(duration));
         }
       } catch (error) {
         console.error('Error loading preferences:', error);
@@ -819,13 +839,27 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
     const selectedDateObj = new Date(selectedDate);
     setSelectedEventDate(selectedDateObj);
     
-    // Update times while keeping previously selected hours
+    // Utiliser les heures par défaut des paramètres
     const newStartTime = new Date(selectedDateObj);
-    newStartTime.setHours(9, 0, 0, 0);
+    newStartTime.setHours(defaultStartHour, 0, 0, 0);
     setSelectedStartTime(newStartTime);
   
+    // Si nous avons une durée par défaut, l'utiliser pour calculer l'heure de fin
+    // Sinon, utiliser l'heure de fin par défaut
     const newEndTime = new Date(selectedDateObj);
-    newEndTime.setHours(10, 0, 0, 0);
+    
+    if (defaultDuration && defaultDuration > 0) {
+      // Calculer l'heure de fin basée sur l'heure de début + la durée
+      const endMinutes = defaultStartHour * 60 + defaultDuration;
+      const endHours = Math.floor(endMinutes / 60);
+      const endMinsPart = endMinutes % 60;
+      
+      newEndTime.setHours(endHours, endMinsPart, 0, 0);
+    } else {
+      // Utiliser simplement l'heure de fin par défaut
+      newEndTime.setHours(defaultEndHour, 0, 0, 0);
+    }
+    
     setSelectedEndTime(newEndTime);
   
     // Utiliser un nouvel objet complètement différent
@@ -839,7 +873,7 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress }) => {
       reminders: []
     };
     
-    console.log("Creating new event with isFullDay:", freshEvent.isFullDay);
+    console.log(`Creating new event with default times: ${defaultStartHour}:00 - ${newEndTime.getHours()}:${newEndTime.getMinutes()}`);
     setNewEvent(freshEvent);
     setModalMode('create');
     setModalKey(Date.now()); // Générer une nouvelle clé
