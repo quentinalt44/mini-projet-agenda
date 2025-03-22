@@ -702,6 +702,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
     paddingVertical: 20,
     paddingHorizontal: 16,
+    paddingBottom: 40, // Augmentation du padding en bas
     maxHeight: '80%',
   },
   filterModalHeader: {
@@ -745,6 +746,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 20,
+    marginBottom: 10, // Ajout d'une marge en bas pour les boutons
   },
   resetFilterButton: {
     paddingVertical: 10,
