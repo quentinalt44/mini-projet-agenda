@@ -104,6 +104,9 @@ const EventModal: React.FC<EventModalProps> = ({
   // Ajoutez cet état pour gérer la visibilité du picker d'emplacement
   const [isLocationPickerVisible, setIsLocationPickerVisible] = useState(false);
 
+  // Ajouter un état pour suivre si le titre est valide
+  const [titleError, setTitleError] = useState(false);
+
   // Synchroniser l'état local avec les props quand le modal devient visible
   useEffect(() => {
     if (isVisible) {
@@ -148,6 +151,13 @@ const EventModal: React.FC<EventModalProps> = ({
       console.log("Location de l'événement:", newEvent.location);
     }
   }, [isVisible, newEvent, mode]);
+
+  // Vérifier l'état initial du titre lors de l'ouverture du modal
+  useEffect(() => {
+    if (isVisible) {
+      setTitleError(newEvent.title.trim() === '');
+    }
+  }, [isVisible, newEvent.title]);
 
   const handleToggleChange = (value: boolean) => {
     console.log("Toggle changed to:", value);
@@ -378,6 +388,12 @@ const EventModal: React.FC<EventModalProps> = ({
     });
   };
 
+  // Vérifier le titre lorsqu'il change
+  const handleTitleChange = (text: string) => {
+    setNewEvent({ ...newEvent, title: text });
+    setTitleError(text.trim() === '');
+  };
+
   return (
     <Modal
       animationType="slide"
@@ -398,11 +414,17 @@ const EventModal: React.FC<EventModalProps> = ({
             contentContainerStyle={styles.scrollViewContent}
           >
             <TextInput
-              style={styles.input}
-              placeholder="Titre"
+              style={[
+                styles.input, 
+                titleError ? styles.inputError : null
+              ]}
+              placeholder="Titre *"
               value={newEvent.title}
-              onChangeText={(text) => setNewEvent({ ...newEvent, title: text })}
+              onChangeText={handleTitleChange}
             />
+            {titleError && (
+              <Text style={styles.errorText}>Le titre est obligatoire</Text>
+            )}
             
             {/* Catégorie simplifiée sans label et sans bordures */}
             <TouchableOpacity
@@ -652,8 +674,16 @@ const EventModal: React.FC<EventModalProps> = ({
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleAddNewEvent}
+              style={[
+                styles.saveButton,
+                titleError ? styles.saveButtonDisabled : null
+              ]}
+              onPress={() => {
+                if (!titleError) {
+                  handleAddNewEvent();
+                }
+              }}
+              disabled={titleError}
             >
               <Text style={styles.buttonText}>Enregistrer</Text>
             </TouchableOpacity>
@@ -1119,6 +1149,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1a73e8',
     textAlign: 'center',
+  },
+  inputError: {
+    borderColor: '#d32f2f',
+    borderWidth: 1,
+  },
+  errorText: {
+    color: '#d32f2f',
+    fontSize: 12,
+    marginTop: -12,
+    marginBottom: 10,
+    marginLeft: 5,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#b0bec5',
+    opacity: 0.7,
   },
 });
 
