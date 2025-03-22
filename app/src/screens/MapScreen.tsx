@@ -176,18 +176,18 @@ const MapScreen: React.FC<MapScreenProps> = ({ location, onClose, onEventPress }
         initialRegion={{
           latitude: location.latitude,
           longitude: location.longitude,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
+          latitudeDelta: 0.01, // Zoom plus proche
+          longitudeDelta: 0.01,
         }}
-        // Remplacer initialRegion par region pour un contrôle dynamique
-        region={isLoading ? undefined : getMapRegion()}
+        // Supprimez ou commentez cette ligne pour ne pas surcharger initialRegion
+        // region={isLoading ? undefined : getMapRegion()}
         onMapReady={() => {
           console.log("Carte prête - position initiale:", location);
-          if (events.length > 0) {
-            console.log("Centrage sur l'événement:", events[0].title);
-          }
-          console.log("Carte prête, ajustement aux événements...");
-          setTimeout(fitAllMarkers, 500); // Petit délai pour s'assurer que tout est chargé
+          // Ne pas centrer automatiquement sur les événements au démarrage
+          // Laisser la carte centrée sur la position de l'utilisateur
+          
+          // Si vous voulez ajuster la vue pour voir tous les événements, utilisez le bouton dédié
+          // setTimeout(fitAllMarkers, 500);
         }}
         showsUserLocation={true}
         followsUserLocation={false}
