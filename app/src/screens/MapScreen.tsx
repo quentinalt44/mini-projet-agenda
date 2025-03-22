@@ -43,12 +43,32 @@ interface MapScreenProps {
 const MapScreen: React.FC<MapScreenProps> = (props) => {
   const { location, onClose, onEventPress, eventId, showSingleEvent } = props;
   
-  // Ajout d'un état pour conserver la position réelle de l'utilisateur
+  // Créer des états distincts pour la position utilisateur et l'emplacement central initial
   const [userPosition, setUserPosition] = useState({
-    latitude: location.latitude,
-    longitude: location.longitude,
-    title: location.title || "Ma position"
+    // Utiliser la géolocalisation ou une position par défaut, PAS l'emplacement passé
+    latitude: 47.218371, // Coordonnées par défaut (La Roche-sur-Yon)
+    longitude: -1.553621,
+    title: "Ma position"
   });
+  
+  // Utilisez la géolocalisation du navigateur pour récupérer la position réelle
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          setUserPosition({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            title: "Ma position"
+          });
+          console.log("Position utilisateur obtenue :", position.coords);
+        },
+        error => {
+          console.log("Erreur de géolocalisation :", error);
+        }
+      );
+    }
+  }, []);
   
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -268,20 +288,18 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
         moveOnMarkerPress={false}
         showsMyLocationButton={true}
       >
-        {/* Position de l'utilisateur */}
-        {!props.showSingleEvent && (
-          <Marker
-            coordinate={{
-              latitude: userPosition.latitude,
-              longitude: userPosition.longitude
-            }}
-            title="Ma position"
-          >
-            <View style={styles.userLocationMarker}>
-              <View style={styles.userLocationDot} />
-            </View>
-          </Marker>
-        )}
+        {/* Position de l'utilisateur - Retrait de la condition !props.showSingleEvent */}
+        <Marker
+          coordinate={{
+            latitude: userPosition.latitude,
+            longitude: userPosition.longitude
+          }}
+          title="Ma position"
+        >
+          <View style={styles.userLocationMarker}>
+            <View style={styles.userLocationDot} />
+          </View>
+        </Marker>
 
         {/* Événements */}
         {events.map(event => {
@@ -330,15 +348,12 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
           <Ionicons name="expand-outline" size={24} color="#1a73e8" />
         </TouchableOpacity>
         
-        {/* Bouton pour recentrer sur ma position */}
-        {!props.showSingleEvent && (
-          <TouchableOpacity 
-            style={styles.myLocationButton}
-            onPress={centerOnMyLocation}
-          >
-            <Ionicons name="locate" size={24} color="#ffffff" />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity 
+          style={styles.myLocationButton}
+          onPress={centerOnMyLocation}
+        >
+          <Ionicons name="locate" size={24} color="#ffffff" />
+        </TouchableOpacity>
       </>
     </SafeAreaView>
   );
