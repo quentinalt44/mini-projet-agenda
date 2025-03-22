@@ -701,7 +701,7 @@ const EventModal: React.FC<EventModalProps> = ({
           <View style={styles.pickerModalContainer}>
             <View style={styles.pickerModalContent}>
               <Text style={styles.modalTitle}>
-                {currentPicker.current?.includes('start') ? 'Date de début' : 'Date de fin'}
+                {currentPicker.current?.includes('start') ? 'Début' : 'Fin'}
               </Text>
               
               <DateTimePicker
