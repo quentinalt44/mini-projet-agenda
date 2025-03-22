@@ -145,6 +145,18 @@ const MapScreen: React.FC<MapScreenProps> = ({ location, onClose, onEventPress }
     });
   };
 
+  // Ajoutez cette nouvelle fonction après fitAllMarkers
+  const centerOnMyLocation = () => {
+    if (!mapRef.current) return;
+    
+    mapRef.current.animateToRegion({
+      latitude: location.latitude,
+      longitude: location.longitude,
+      latitudeDelta: 0.01, // Zoom un peu plus proche pour votre position
+      longitudeDelta: 0.01,
+    }, 500); // Animation de 500ms
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -289,12 +301,23 @@ const MapScreen: React.FC<MapScreenProps> = ({ location, onClose, onEventPress }
       )}
 
       {/* Ajoutez ce bouton flottant */}
-      <TouchableOpacity 
-        style={styles.fitButton}
-        onPress={fitAllMarkers}
-      >
-        <Ionicons name="expand-outline" size={24} color="#ffffff" />
-      </TouchableOpacity>
+      <>
+        {/* Bouton pour ajuster la vue à tous les marqueurs */}
+        <TouchableOpacity 
+          style={styles.fitButton}
+          onPress={fitAllMarkers}
+        >
+          <Ionicons name="expand-outline" size={24} color="#1a73e8" />
+        </TouchableOpacity>
+        
+        {/* Bouton pour recentrer sur ma position */}
+        <TouchableOpacity 
+          style={styles.myLocationButton}
+          onPress={centerOnMyLocation}
+        >
+          <Ionicons name="locate" size={24} color="#ffffff" />
+        </TouchableOpacity>
+      </>
     </SafeAreaView>
   );
 };
@@ -423,19 +446,37 @@ const styles = StyleSheet.create({
   },
   fitButton: {
     position: 'absolute',
-    right: 16,
-    bottom: 100,
-    backgroundColor: '#1a73e8',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    right: 20,
+    bottom: 90, // 140 → 90 (moins haut, à seulement 70px au-dessus du bouton inférieur)
+    backgroundColor: '#ffffff',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
+    elevation: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+    borderWidth: 1,
+    borderColor: '#1a73e8',
+  },
+  myLocationButton: {
+    position: 'absolute',
+    right: 20, // 16 → 20
+    bottom: 20, // 16 → 20
+    backgroundColor: '#1a73e8',
+    width: 56, // 46 → 56
+    height: 56, // 46 → 56
+    borderRadius: 28, // 23 → 28
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 6, // 3 → 6
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 }, // height: 1 → 2
+    shadowOpacity: 0.25, // 0.2 → 0.25
+    shadowRadius: 3.84, // 2 → 3.84
   },
 });
 
