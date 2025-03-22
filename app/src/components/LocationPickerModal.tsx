@@ -35,15 +35,24 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
   const [locationTitle, setLocationTitle] = useState(initialLocation?.title || '');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Ajoutez une référence à la carte au début du composant
+  const mapRef = React.useRef<MapView>(null);
+
   // Réinitialiser l'état lorsque le modal s'ouvre
   useEffect(() => {
     if (isVisible) {
       setSelectedLocation(initialLocation || null);
       setLocationTitle(initialLocation?.title || '');
+      
+      // Centrer automatiquement sur la position de l'utilisateur à l'ouverture
+      if (!initialLocation) {
+        // Si aucun emplacement n'est déjà défini, obtenir la position actuelle
+        getUserLocation();
+      }
     }
   }, [isVisible, initialLocation]);
 
-  // Obtenir la position actuelle de l'utilisateur
+  // Modifiez la fonction getUserLocation pour qu'elle centre également la carte
   const getUserLocation = async () => {
     setIsLoading(true);
     
@@ -64,11 +73,23 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         accuracy: Location.Accuracy.Balanced,
       });
       
-      setSelectedLocation({
+      const userLocation = {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
         title: locationTitle
-      });
+      };
+      
+      setSelectedLocation(userLocation);
+      
+      // Centrer la carte sur la position récupérée
+      if (mapRef.current) {
+        mapRef.current.animateToRegion({
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        }, 500);
+      }
     } catch (error) {
       console.error("Erreur lors de l'obtention de la position:", error);
       Alert.alert(
@@ -91,12 +112,22 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     });
   };
 
-  // Confirmer la sélection de l'emplacement
+  // Modifiez la fonction confirmLocation pour vérifier la présence du titre
   const confirmLocation = () => {
     if (selectedLocation) {
+      // Vérifier que le titre est renseigné
+      if (!locationTitle || locationTitle.trim() === '') {
+        Alert.alert(
+          "Titre requis",
+          "Veuillez saisir un nom pour cet emplacement.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+      
       onSelectLocation({
         ...selectedLocation,
-        title: locationTitle || 'Emplacement sélectionné'
+        title: locationTitle
       });
       onClose();
     }
@@ -111,21 +142,21 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     >
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.closeButton}
             onPress={onClose}
           >
-            <Ionicons name="close" size={24} color="#1a73e8" />
+            <Ionicons name="close" size={16} color="#ffffff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Choisir un emplacement</Text>
           <TouchableOpacity 
             style={styles.confirmButton}
             onPress={confirmLocation}
-            disabled={!selectedLocation}
+            disabled={!selectedLocation || !locationTitle || locationTitle.trim() === ''}
           >
             <Text style={[
               styles.confirmButtonText, 
-              !selectedLocation && styles.disabledButtonText
+              (!selectedLocation || !locationTitle || locationTitle.trim() === '') && styles.disabledButtonText
             ]}>Valider</Text>
           </TouchableOpacity>
         </View>
@@ -133,13 +164,14 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Nom de l'emplacement (optionnel)"
+            placeholder="Nom de l'emplacement"
             value={locationTitle}
             onChangeText={setLocationTitle}
           />
         </View>
         
         <MapView
+          ref={mapRef}
           style={styles.map}
           initialRegion={{
             latitude: initialLocation?.latitude || 48.8566,
@@ -167,6 +199,12 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
             />
           )}
         </MapView>
+
+        {isLoading && (
+          <View style={styles.loadingOverlay}>
+            <Text style={styles.loadingText}>Localisation en cours...</Text>
+          </View>
+        )}
         
         <TouchableOpacity 
           style={styles.locationButton}
@@ -203,10 +241,15 @@ const styles = StyleSheet.create({
     color: '#1a73e8',
   },
   closeButton: {
-    padding: 8,
+    padding: 4,
+    backgroundColor : '#ff6b6b',
+    borderRadius: 8,
   },
   confirmButton: {
     padding: 8,
+    backgroundColor : '#f1f1f1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
   },
   confirmButtonText: {
     color: '#1a73e8',
@@ -252,6 +295,17 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '500',
     fontSize: 16,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
 
