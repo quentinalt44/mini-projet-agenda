@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, Callout } from 'react-native-maps';
-import { databaseService } from '../database/DatabaseService';
+import { databaseService, EVENT_CATEGORIES } from '../database/DatabaseService';
 
 interface CalendarEvent {
   id?: string | number;
@@ -21,6 +21,7 @@ interface CalendarEvent {
     longitude: number;
     title?: string;
   };
+  category?: string;
   // Autres propriétés d'événement...
 }
 
@@ -170,6 +171,18 @@ const MapScreen: React.FC<MapScreenProps> = ({ location, onClose, onEventPress }
     }, 500); // Animation de 500ms
   };
 
+  // Ajoutez cette fonction utilitaire dans votre composant MapScreen (après le formatEventDate)
+  const getCategoryColor = (category?: string): string => {
+    // Si aucune catégorie n'est spécifiée, utilisez la couleur par défaut
+    if (!category) return '#1a73e8'; // Bleu par défaut
+    
+    // Recherchez la catégorie dans la liste des catégories
+    const categoryObj = EVENT_CATEGORIES.find(cat => cat.id === category);
+    
+    // Si la catégorie existe, retournez sa couleur, sinon la couleur par défaut
+    return categoryObj?.color || '#1a73e8';
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -254,7 +267,7 @@ const MapScreen: React.FC<MapScreenProps> = ({ location, onClose, onEventPress }
                 }}
                 title={event.title}
                 description={formatEventDate(event.start)}
-                pinColor="#FF5252"
+                pinColor={getCategoryColor(event.category)} // Utilisez la couleur de la catégorie
                 onCalloutPress={() => {
                   if (onEventPress && event.id !== undefined) {
                     onEventPress(event.id);
@@ -263,9 +276,20 @@ const MapScreen: React.FC<MapScreenProps> = ({ location, onClose, onEventPress }
               >
                 <Callout tooltip style={styles.eventCallout}>
                   <View style={styles.calloutContainer}>
-                    <Text style={styles.calloutTitle}>{event.title}</Text>
+                    <View style={styles.calloutHeader}>
+                      <View 
+                        style={[
+                          styles.categoryIndicator, 
+                          { backgroundColor: getCategoryColor(event.category) }
+                        ]} 
+                      />
+                      <Text style={styles.calloutTitle}>{event.title}</Text>
+                    </View>
                     <Text style={styles.calloutDate}>
                       {formatEventDate(event.start)}
+                    </Text>
+                    <Text style={styles.calloutCategory}>
+                      {EVENT_CATEGORIES.find(cat => cat.id === event.category)?.label || "Sans catégorie"}
                     </Text>
                     <Text style={styles.calloutLocation}>
                       {event.location?.title || "Emplacement sans nom"}
@@ -391,16 +415,31 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
+  calloutHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  categoryIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
   calloutTitle: {
     fontWeight: 'bold',
     fontSize: 16,
     color: '#1a73e8',
-    marginBottom: 4,
   },
   calloutDate: {
     fontSize: 14,
     color: '#5f6368',
     marginBottom: 2,
+  },
+  calloutCategory: {
+    fontSize: 14,
+    color: '#5f6368',
+    marginBottom: 6,
   },
   calloutLocation: {
     fontSize: 14,

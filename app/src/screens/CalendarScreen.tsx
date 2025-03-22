@@ -313,19 +313,14 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress, onMapP
     console.log(`Adding event with full day: ${newEvent.isFullDay}, category: ${newEvent.category || 'default'}`);
   
     try {
-      if (newEvent.id) {
-        await databaseService.updateEvent(newEvent.id.toString(), {
-          title: eventData.title,
-          summary: eventData.summary,
-          start: eventData.start_date,
-          end: eventData.end_date,
-          isFullDay: eventData.isFullDay,
-          category: eventData.category // Ajouter cette ligne
-        });
-        console.log("✅ Event updated successfully");
-      } else {
-        await databaseService.addEvent(eventData);
-        console.log("✅ Event added successfully");
+      console.log("Location data:", newEvent.location); // Ajoutez ce log pour vérifier
+      
+      let newEventId;
+      if (modalMode === 'create') {
+        newEventId = await databaseService.addEvent(eventData);
+      } else if (modalMode === 'edit' && selectedEvent && selectedEvent.id) {
+        // Vérifiez que l'ID est bien transmis et convertissez-le en string
+        await databaseService.updateEvent(String(selectedEvent.id), eventData);
       }
   
       // Fermer la modal avant le rafraîchissement
@@ -955,7 +950,8 @@ const handleEditEvent = () => {
     end: selectedEvent.end,
     isFullDay: selectedEvent.isFullDay || false,
     category: selectedEvent.category || 'default',
-    reminders: reminders // Ajout des rappels existants
+    location: selectedEvent.location, // Assurez-vous que ce champ est présent
+    reminders: reminders
   };
   
   // Mettre à jour l'état newEvent
