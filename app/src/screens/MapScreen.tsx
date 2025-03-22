@@ -37,6 +37,7 @@ interface MapScreenProps {
 const MapScreen: React.FC<MapScreenProps> = ({ location, onClose, onEventPress }) => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMapReady, setIsMapReady] = useState(false);
   const mapRef = useRef<MapView>(null);
 
   // Charger les événements avec localisation
@@ -86,6 +87,18 @@ const MapScreen: React.FC<MapScreenProps> = ({ location, onClose, onEventPress }
 
     loadEvents();
   }, []);
+
+  // Modifiez le useEffect qui ajuste automatiquement le zoom pour voir tous les marqueurs
+  // Remplacez le bloc useEffect existant par celui-ci:
+  useEffect(() => {
+    // Ne pas ajuster automatiquement à l'ouverture
+    // Les événements seront chargés et visibles, mais la carte restera centrée sur la position de l'utilisateur
+    
+    // Si vous souhaitez toujours voir l'indicateur de chargement pour savoir quand c'est prêt:
+    if (isMapReady && !isLoading && events.length > 0) {
+      console.log("Carte et événements prêts - Position maintenue sur l'utilisateur");
+    }
+  }, [isMapReady, isLoading, events]);
 
   // Formater la date pour l'affichage dans les infobulles
   const formatEventDate = (dateString: string) => {
@@ -179,15 +192,12 @@ const MapScreen: React.FC<MapScreenProps> = ({ location, onClose, onEventPress }
           latitudeDelta: 0.01, // Zoom plus proche
           longitudeDelta: 0.01,
         }}
-        // Supprimez ou commentez cette ligne pour ne pas surcharger initialRegion
+        // Supprimez ou commentez cette ligne s'il y en a une qui utilise getMapRegion()
         // region={isLoading ? undefined : getMapRegion()}
         onMapReady={() => {
           console.log("Carte prête - position initiale:", location);
-          // Ne pas centrer automatiquement sur les événements au démarrage
-          // Laisser la carte centrée sur la position de l'utilisateur
-          
-          // Si vous voulez ajuster la vue pour voir tous les événements, utilisez le bouton dédié
-          // setTimeout(fitAllMarkers, 500);
+          // Marquer la carte comme prête
+          setIsMapReady(true);
         }}
         showsUserLocation={true}
         followsUserLocation={false}
