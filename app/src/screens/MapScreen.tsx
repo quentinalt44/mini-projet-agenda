@@ -30,64 +30,97 @@ interface MapScreenProps {
     latitude: number;
     longitude: number;
     title?: string;
+    eventId?: string | number;
+    showSingleEvent?: boolean;
   };
   onClose: () => void;
   onEventPress?: (eventId: string | number) => void;
+  eventId?: string | number;
+  showSingleEvent?: boolean;
 }
 
-const MapScreen: React.FC<MapScreenProps> = ({ location, onClose, onEventPress }) => {
+// Modifiez la signature du composant pour utiliser directement les props sans destructuration
+const MapScreen: React.FC<MapScreenProps> = (props) => {
+  const { location, onClose, onEventPress, eventId, showSingleEvent } = props;
+  
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMapReady, setIsMapReady] = useState(false);
   const mapRef = useRef<MapView>(null);
 
-  // Charger les événements avec localisation
+  // Utilisez directement props.showSingleEvent et props.eventId dans useEffect
   useEffect(() => {
+    console.log("MapScreen - Chargement des événements");
+    console.log("Props reçues:", {
+      eventId: props.eventId,
+      showSingleEvent: props.showSingleEvent
+    });
+    
     const loadEvents = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        const allEvents = await databaseService.getEvents() as unknown as CalendarEvent[];
+        let allEvents = await databaseService.getEvents();
         
-        console.log("=== DIAGNOSTIC CARTE ===");
-        console.log(`Total d'événements: ${allEvents.length}`);
-        
-        // Vérifier combien d'événements ont un champ location
-        const eventsWithLocationField = allEvents.filter(event => event.location);
-        console.log(`Événements avec champ location: ${eventsWithLocationField.length}`);
-        
-        if (eventsWithLocationField.length > 0) {
-          console.log("Premier événement avec champ location:", 
-            JSON.stringify(eventsWithLocationField[0].location, null, 2));
-        }
-        
-        // Filtrer avec une condition plus précise
-        const eventsWithLocation = allEvents.filter(event => 
+        // Filtrer les événements qui ont une localisation valide
+        let filteredEvents = allEvents.filter(event => 
           event.location && 
           typeof event.location.latitude === 'number' && 
           typeof event.location.longitude === 'number'
         );
         
-        console.log(`Événements avec coordonnées valides: ${eventsWithLocation.length}`);
+        console.log(`${filteredEvents.length} événements avec localisation trouvés`);
         
-        if (eventsWithLocation.length > 0) {
-          console.log("Premier événement avec coordonnées valides:");
-          console.log(`ID: ${eventsWithLocation[0].id}`);
-          console.log(`Titre: ${eventsWithLocation[0].title}`);
-          console.log(`Latitude: ${eventsWithLocation[0].location?.latitude}`);
-          console.log(`Longitude: ${eventsWithLocation[0].location?.longitude}`);
+        // Si showSingleEvent est TRUE et qu'un eventId est spécifié, filtrer la liste
+        if (props.showSingleEvent === true && props.eventId) {
+          console.log(`Filtrage pour afficher uniquement l'événement ${props.eventId}`);
+          
+          // Comparaison stricte avec conversion en chaîne
+          const eventIdStr = String(props.eventId);
+          filteredEvents = filteredEvents.filter(event => String(event.id) === eventIdStr);
+          
+          console.log(`Après filtrage: ${filteredEvents.length} événement(s)`);
+        } else {
+          console.log("Affichage de tous les événements");
         }
         
-        setEvents(eventsWithLocation as CalendarEvent[]);
+        // Transformation pour l'affichage
+        const displayEvents = filteredEvents.map(event => ({
+          id: event.id,
+          title: event.title,
+          start: event.start_date,
+          end: event.end_date,
+          location: event.location,
+          category: event.category,
+        }));
+        
+        setEvents(displayEvents);
+        
+        // Si on a filtré sur un seul événement et qu'on l'a trouvé, centrer dessus
+        if (props.showSingleEvent === true && filteredEvents.length > 0) {
+          const event = filteredEvents[0];
+          console.log(`Centrage sur l'événement unique: ${event.id}`);
+          
+          setTimeout(() => {
+            if (mapRef.current && event.location) {
+              mapRef.current.animateToRegion({
+                latitude: event.location.latitude,
+                longitude: event.location.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              }, 500);
+            }
+          }, 300);
+        }
       } catch (error) {
         console.error("Erreur lors du chargement des événements:", error);
-        Alert.alert("Erreur", "Impossible de charger les événements");
+        setEvents([]);
       } finally {
         setIsLoading(false);
       }
     };
-
+    
     loadEvents();
-  }, []);
+  }, [props.eventId, props.showSingleEvent]);
 
   // Modifiez le useEffect qui ajuste automatiquement le zoom pour voir tous les marqueurs
   // Remplacez le bloc useEffect existant par celui-ci:

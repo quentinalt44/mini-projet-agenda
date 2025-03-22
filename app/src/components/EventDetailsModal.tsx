@@ -214,10 +214,14 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                   <TouchableOpacity 
                     style={styles.mapExpandButton}
                     onPress={() => {
-                      console.log('Expand button pressed!');
-                      // Naviguer vers la vue Map avec les données de localisation
-                      onMapPress(location);
-                      // Fermer ce modal
+                      const mapParams = {
+                        location: location,
+                        eventId: event.id,
+                        showSingleEvent: true
+                      };
+                      
+                      console.log('Ouverture de la carte avec paramètres:', mapParams);
+                      onMapPress(mapParams);
                       onClose();
                     }}
                   >

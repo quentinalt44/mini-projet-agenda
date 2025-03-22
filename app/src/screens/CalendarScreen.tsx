@@ -17,6 +17,7 @@ import CustomKnob from '../components/CustomKnob';
 import EventModal from '../components/EventModal';
 import EventDetailsModal from '../components/EventDetailsModal';
 import ModalWrapper from '../components/ModalWrapper';
+import MapScreen from './MapScreen';
 import styles from '../styles/styles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
@@ -110,7 +111,7 @@ interface AgendaItems {
 
 interface CalendarScreenProps {
   onSettingsPress: () => void;
-  onMapPress: (location: any) => void;
+  onMapPress: (data: any) => void; // Accepter un objet complet
   eventToShow?: string | number | null;
 }
 
@@ -177,6 +178,16 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress, onMapP
 
   const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [mapParams, setMapParams] = useState<{
+    location: {latitude: number, longitude: number, title?: string};
+    eventId?: string | number;
+    showSingleEvent: boolean;
+  }>({
+    location: userLocation || { latitude: 48.8566, longitude: 2.3522 },
+    eventId: undefined,
+    showSingleEvent: false
+  });
 
   useEffect(() => {
     const loadPreferencesAndEvents = async () => {
@@ -1011,48 +1022,85 @@ const handleEditEvent = async () => {
     }, 100);
   };
 
-  const getUserLocation = async () => {
-    setLocationLoading(true);
+// Remplacez votre fonction getUserLocation par celle-ci
+const getUserLocation = async () => {
+  setLocationLoading(true);
+  
+  try {
+    // Demander la permission d'accéder à la localisation
+    const { status } = await Location.requestForegroundPermissionsAsync();
     
-    try {
-      // Demander la permission d'accéder à la localisation
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      
-      if (status !== 'granted') {
-        Alert.alert(
-          "Permission refusée",
-          "L'accès à votre position est nécessaire pour afficher votre emplacement sur la carte.",
-          [{ text: "OK" }]
-        );
-        setLocationLoading(false);
-        return;
-      }
-      
-      // Obtenir la position actuelle
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      
-      const userPos = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        title: "Ma position"
-      };
-      
-      setUserLocation(userPos);
-      
-      // Naviguer vers la carte avec la position de l'utilisateur
-      onMapPress(userPos);
-    } catch (error) {
-      console.error("Erreur lors de l'obtention de la position:", error);
+    if (status !== 'granted') {
       Alert.alert(
-        "Erreur de localisation",
-        "Impossible d'obtenir votre position actuelle. Veuillez vérifier que la localisation est activée.",
+        "Permission refusée",
+        "L'accès à votre position est nécessaire pour afficher votre emplacement sur la carte.",
         [{ text: "OK" }]
       );
-    } finally {
       setLocationLoading(false);
+      return;
     }
+    
+    // Obtenir la position actuelle
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
+    
+    const userPos = {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+      title: "Ma position"
+    };
+    
+    setUserLocation(userPos);
+    
+    // Créer un objet MapData complet avec les paramètres requis
+    const mapData = {
+      location: userPos,
+      eventId: undefined,
+      showSingleEvent: false // Explicitement false pour voir tous les événements
+    };
+    
+    console.log("Ouverture de la carte avec tous les événements:", mapData);
+    
+    // Naviguer vers la carte avec la position de l'utilisateur et tous les événements
+    onMapPress(mapData);
+  } catch (error) {
+    console.error("Erreur lors de l'obtention de la position:", error);
+    Alert.alert(
+      "Erreur de localisation",
+      "Impossible d'obtenir votre position actuelle. Veuillez vérifier que la localisation est activée.",
+      [{ text: "OK" }]
+    );
+  } finally {
+    setLocationLoading(false);
+  }
+};
+
+  // Bouton qui affiche tous les événements
+  const handleShowAllEventsOnMap = () => {
+    // Position par défaut (par exemple la position actuelle de l'utilisateur)
+    const defaultLocation = userLocation || { latitude: 48.8566, longitude: 2.3522 };
+    
+    setShowMap(true);
+    setMapParams({
+      location: defaultLocation,
+      eventId: undefined,
+      showSingleEvent: false
+    });
+  };
+
+  // Définition de l'interface pour les données de la carte
+  interface MapData {
+    location: { latitude: number; longitude: number; title?: string };
+    eventId?: string | number;
+    showSingleEvent?: boolean;
+  }
+
+  // Gestionnaire pour les clics depuis un événement spécifique
+  const handleMapPress = (data: MapData) => {
+    console.log("MapPress appelée avec données:", data);
+    // Transmettre TOUS les paramètres au navigateur parent
+    onMapPress(data);
   };
 
   return (
@@ -1145,8 +1193,8 @@ const handleEditEvent = async () => {
       {/* Maps FAB */}
       <TouchableOpacity
         style={[styles.fab, styles.mapFab]}
-        onPress={getUserLocation}
-        disabled={locationLoading}
+        onPress={() => { getUserLocation(); }}
+        disabled={locationLoading === true}
       >
         <Ionicons 
           name={locationLoading ? "hourglass-outline" : "map-outline"} 
@@ -1217,6 +1265,49 @@ const handleEditEvent = async () => {
         onDelete={handleDeleteEvent}
         onMapPress={onMapPress} // Ajoutez cette ligne
       />
+
+      {/* MapScreen */}
+      {showMap && (
+        <View style={{ flex: 1 }}>
+          <MapScreen
+            location={mapParams.location}
+            onClose={() => setShowMap(false)}
+            onEventPress={(eventId) => {
+              // Create a simplified AgendaItem from the eventId
+              const event = events.find(e => e.id === eventId);
+              if (event) {
+                handleEventPress({
+                  ...event,
+                  height: 50
+                });
+              }
+            }}
+            eventId={mapParams.eventId}
+            showSingleEvent={mapParams.showSingleEvent}
+          />
+        </View>
+      )}
+      {/* Log MapScreen params outside of render */}
+      {showMap && (console.log("Rendu MapScreen avec:", mapParams), null)}
+      {showMap && (
+        <View style={{ flex: 1 }}>
+          <MapScreen
+            location={mapParams.location}
+            onClose={() => setShowMap(false)}
+            onEventPress={(eventId) => {
+              const event = events.find(e => e.id === eventId);
+              if (event) {
+                handleEventPress({
+                  ...event,
+                  height: 50
+                });
+              }
+            }}
+            eventId={mapParams.eventId}
+            showSingleEvent={mapParams.showSingleEvent}
+          />
+        </View>
+      )}
     </View>
   );
 };

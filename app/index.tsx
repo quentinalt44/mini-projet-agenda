@@ -9,6 +9,8 @@ const App = () => {
   const [currentScreen, setCurrentScreen] = useState('calendar');
   const [mapLocation, setMapLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [eventToShow, setEventToShow] = useState<string | number | null>(null);
+  const [eventId, setEventId] = useState<string | number | null>(null);
+  const [showSingleEvent, setShowSingleEvent] = useState(false);
 
   const navigateToParams = () => {
     setCurrentScreen('params');
@@ -18,8 +20,31 @@ const App = () => {
     setCurrentScreen('calendar');
   };
 
-  const navigateToMap = (location: { latitude: number; longitude: number }) => {
-    setMapLocation(location);
+  const navigateToMap = (data: { location?: { latitude: number; longitude: number }, eventId?: string | number, showSingleEvent?: boolean }) => {
+    console.log("navigateToMap appelé avec:", data);
+    
+    // Vérifier que data.location existe bien
+    if (!data.location) {
+      console.error("Erreur: location manquante dans les données de la carte");
+      return;
+    }
+    
+    // Stocker la position
+    setMapLocation(data.location);
+    
+    // Définir explicitement eventId (peut être undefined)
+    setEventId(data.eventId ?? null);
+    
+    // Définir explicitement showSingleEvent (doit être un booléen)
+    setShowSingleEvent(Boolean(data.showSingleEvent));
+    
+    console.log("Paramètres définis:", {
+      location: data.location,
+      eventId: data.eventId,
+      showSingleEvent: Boolean(data.showSingleEvent)
+    });
+    
+    // Changer d'écran
     setCurrentScreen('map');
   };
 
@@ -44,11 +69,15 @@ const App = () => {
       ) : currentScreen === 'params' ? (
         <ParamsScreen onClose={navigateToCalendar} />
       ) : currentScreen === 'map' && mapLocation ? (
-        <MapScreen 
-          location={mapLocation} 
-          onClose={navigateToCalendar}
-          onEventPress={handleEventPress}
-        />
+        <>
+          <MapScreen 
+            location={mapLocation} 
+            onClose={navigateToCalendar}
+            onEventPress={handleEventPress}
+            eventId={eventId ?? undefined}
+            showSingleEvent={showSingleEvent}
+          />
+        </>
       ) : (
         null
       )}
