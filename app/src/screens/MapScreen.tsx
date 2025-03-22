@@ -5,7 +5,6 @@ import {
   TouchableOpacity, 
   SafeAreaView,
   Text,
-  Alert,
   Modal,
   ScrollView,
   Switch
@@ -277,7 +276,11 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
     setCategoryFilters(initialFilters);
   }, []);
   
+  // 1. Ajoutez ces nouveaux états après les états de filtre par catégorie
+  const [dateFilter, setDateFilter] = useState('all'); // 'all', 'today', 'week', 'month', 'custom'
+
   // Appliquer les filtres chaque fois que les événements ou les filtres changent
+  // Modifiez la fonction pour appliquer les filtres
   useEffect(() => {
     if (events.length === 0) {
       setFilteredEvents([]);
@@ -285,16 +288,55 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
     }
     
     // Vérifier si des filtres sont actifs
-    const hasActiveFilters = Object.values(categoryFilters).some(value => !value);
-    setAreFiltersActive(hasActiveFilters);
+    const hasActiveCategoryFilters = Object.values(categoryFilters).some(value => !value);
+    const hasActiveDateFilter = dateFilter !== 'all';
+    setAreFiltersActive(hasActiveCategoryFilters || hasActiveDateFilter);
     
     // Appliquer les filtres seulement en mode carte principale
-    if (!props.showSingleEvent && hasActiveFilters) {
-      const filtered = events.filter(event => {
+    if (!props.showSingleEvent && (hasActiveCategoryFilters || hasActiveDateFilter)) {
+      let filtered = events.filter(event => {
         // Filtrer par catégorie
         if (event.category && !categoryFilters[event.category]) {
           return false;
         }
+        
+        // Filtrer par date
+        if (hasActiveDateFilter) {
+          const eventDate = new Date(event.start);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          switch(dateFilter) {
+            case 'today':
+              const todayEnd = new Date(today);
+              todayEnd.setHours(23, 59, 59, 999);
+              return eventDate >= today && eventDate <= todayEnd;
+              
+            case 'week':
+              // Calcul du début de semaine basé sur le lundi comme premier jour
+              const weekStart = new Date(today);
+              const currentDay = today.getDay(); // 0 pour dimanche, 1 pour lundi, etc.
+              const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1; // Transformation pour que lundi = 0
+              
+              // Recule au lundi de la semaine courante
+              weekStart.setDate(today.getDate() - daysFromMonday);
+              weekStart.setHours(0, 0, 0, 0);
+              
+              const weekEnd = new Date(weekStart);
+              weekEnd.setDate(weekStart.getDate() + 6); // +6 jours pour aller au dimanche
+              weekEnd.setHours(23, 59, 59, 999);
+              
+              return eventDate >= weekStart && eventDate <= weekEnd;
+              
+            case 'month':
+              const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+              const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+              monthEnd.setHours(23, 59, 59, 999);
+              return eventDate >= monthStart && eventDate <= monthEnd;
+              break;
+          }
+        }
+        
         return true;
       });
       
@@ -303,7 +345,7 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
       // Si aucun filtre n'est actif ou si on est en mode événement unique, utiliser tous les événements
       setFilteredEvents(events);
     }
-  }, [events, categoryFilters, props.showSingleEvent]);
+  }, [events, categoryFilters, dateFilter, props.showSingleEvent]);
   
   // Fonction pour basculer l'état d'un filtre de catégorie
   const toggleCategoryFilter = (categoryId: string) => {
@@ -321,6 +363,29 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
     }, {} as {[key: string]: boolean});
     
     setCategoryFilters(resetValues);
+  };
+
+  // 3. Ajoutez cette fonction pour formater les dates
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric'
+    });
+  };
+
+  // 4. Ajoutez cette fonction pour réinitialiser tous les filtres
+  const resetAllFilters = () => {
+    // Réinitialiser les filtres de catégorie
+    const resetCategoryValues = EVENT_CATEGORIES.reduce((acc, category) => {
+      acc[category.id] = true;
+      return acc;
+    }, {} as {[key: string]: boolean});
+    
+    setCategoryFilters(resetCategoryValues);
+    
+    // Réinitialiser les filtres de date
+    setDateFilter('all');
   };
 
   return (
@@ -489,12 +554,77 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
                   />
                 </TouchableOpacity>
               ))}
+              <View style={styles.filterSeparator} />
+  
+              <Text style={styles.filterSectionTitle}>Période</Text>
+  
+              <TouchableOpacity 
+                style={styles.dateFilterItem}
+                onPress={() => setDateFilter('all')}
+              >
+                <Text style={styles.dateFilterItemText}>Tous les événements</Text>
+                <View style={styles.radioContainer}>
+                  <View style={[
+                    styles.radioOuter,
+                    dateFilter === 'all' && styles.radioOuterSelected
+                  ]}>
+                    {dateFilter === 'all' && <View style={styles.radioInner} />}
+                  </View>
+                </View>
+              </TouchableOpacity>
+  
+              <TouchableOpacity 
+                style={styles.dateFilterItem}
+                onPress={() => setDateFilter('today')}
+              >
+                <Text style={styles.dateFilterItemText}>Aujourd'hui</Text>
+                <View style={styles.radioContainer}>
+                  <View style={[
+                    styles.radioOuter,
+                    dateFilter === 'today' && styles.radioOuterSelected
+                  ]}>
+                    {dateFilter === 'today' && <View style={styles.radioInner} />}
+                  </View>
+                </View>
+              </TouchableOpacity>
+  
+              <TouchableOpacity 
+                style={styles.dateFilterItem}
+                onPress={() => setDateFilter('week')}
+              >
+                <Text style={styles.dateFilterItemText}>Cette semaine</Text>
+                <View style={styles.radioContainer}>
+                  <View style={[
+                    styles.radioOuter,
+                    dateFilter === 'week' && styles.radioOuterSelected
+                  ]}>
+                    {dateFilter === 'week' && <View style={styles.radioInner} />}
+                  </View>
+                </View>
+              </TouchableOpacity>
+  
+              <TouchableOpacity 
+                style={styles.dateFilterItem}
+                onPress={() => setDateFilter('month')}
+              >
+                <Text style={styles.dateFilterItemText}>Ce mois</Text>
+                <View style={styles.radioContainer}>
+                  <View style={[
+                    styles.radioOuter,
+                    dateFilter === 'month' && styles.radioOuterSelected
+                  ]}>
+                    {dateFilter === 'month' && <View style={styles.radioInner} />}
+                  </View>
+                </View>
+              </TouchableOpacity>
+  
+              {/* Supprimer tout le TouchableOpacity pour "Période personnalisée" */}
             </ScrollView>
             
             <View style={styles.filterModalFooter}>
               <TouchableOpacity 
                 style={styles.resetFilterButton}
-                onPress={resetFilters}
+                onPress={resetAllFilters}
               >
                 <Text style={styles.resetFilterButtonText}>Réinitialiser</Text>
               </TouchableOpacity>
@@ -723,7 +853,7 @@ const styles = StyleSheet.create({
     color: '#202124',
   },
   filterCategoriesContainer: {
-    maxHeight: 300,
+    maxHeight: 500,
   },
   categoryFilterItem: {
     flexDirection: 'row',
@@ -767,6 +897,117 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a73e8',
   },
   applyFilterButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  filterSeparator: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
+    marginVertical: 16,
+  },
+  dateFilterItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  dateFilterItemText: {
+    fontSize: 16,
+    color: '#202124',
+  },
+  radioContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#5f6368',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOuterSelected: {
+    borderColor: '#1a73e8',
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#1a73e8',
+  },
+  customDateContainer: {
+    flex: 1,
+  },
+  customDateRange: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  datePickerButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  datePickerButtonText: {
+    fontSize: 14,
+    color: '#1a73e8',
+  },
+  dateRangeSeparator: {
+    marginHorizontal: 8,
+    fontSize: 16,
+    color: '#202124',
+  },
+  datePickerModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  datePickerModalContent: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    width: '80%',
+    alignItems: 'center',
+  },
+  datePickerModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a73e8',
+    marginBottom: 16,
+  },
+  datePickerButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    width: '100%',
+  },
+  datePickerCancelButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#1a73e8',
+  },
+  datePickerCancelButtonText: {
+    color: '#1a73e8',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  datePickerConfirmButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+    backgroundColor: '#1a73e8',
+  },
+  datePickerConfirmButtonText: {
     color: 'white',
     fontSize: 14,
     fontWeight: '500',
