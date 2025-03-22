@@ -590,9 +590,7 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
                   />
                 </TouchableOpacity>
               ))}
-              
-              <View style={{ marginTop: 24 }} />
-  
+                
               <Text style={[styles.filterSectionTitle, { marginTop: 24 }]}>Période</Text>
   
               <TouchableOpacity 
@@ -659,7 +657,7 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
               </TouchableOpacity>
               
               {/* Ajoutez plus d'espace avant la section Distance */}
-              <View style={{ marginTop: 24 }} />
+              <View style={{ marginTop: 30 }} />
               <Text style={styles.filterSectionTitle}>Distance</Text>
   
               <View style={styles.distanceFilterContainer}>
@@ -1129,6 +1127,7 @@ const styles = StyleSheet.create({
   },
   distanceFilterContainer: {
     marginTop: 16,
+    paddingBottom: 24,
   },
   distanceHeaderContainer: {
     flexDirection: 'row',
