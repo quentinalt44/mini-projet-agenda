@@ -927,45 +927,41 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress, onMapP
   };
 
   // Remplacez complètement la fonction handleEditEvent par cette version
-const handleEditEvent = () => {
-  if (!selectedEvent) return;
+const handleEditEvent = async () => {
+  if (!selectedEvent || selectedEvent.id === undefined) return;
   
-  // Préparer les dates
-  let startTime = new Date(selectedEvent.start);
-  let endTime = new Date(selectedEvent.end);
+  console.log("Édition de l'événement:", selectedEvent.id);
   
-  // Mettre à jour les sélecteurs de temps
-  setSelectedStartTime(startTime);
-  setSelectedEndTime(endTime);
-  
-  // Récupérer ou initialiser la liste des rappels
-  const reminders = selectedEvent.reminders || [];
-  
-  // Préparer l'événement pour l'édition
-  const eventToEdit = {
-    id: selectedEvent.id,
-    title: selectedEvent.title || '',
-    summary: selectedEvent.summary || '',
-    start: selectedEvent.start,
-    end: selectedEvent.end,
-    isFullDay: selectedEvent.isFullDay || false,
-    category: selectedEvent.category || 'default',
-    location: selectedEvent.location, // Assurez-vous que ce champ est présent
-    reminders: reminders
-  };
-  
-  // Mettre à jour l'état newEvent
-  setNewEvent(eventToEdit);
-  
-  // Changer le mode du modal
-  setModalMode('edit');
-  
-  // Générer une nouvelle clé pour forcer le rendu du modal
-  setModalKey(Date.now());
-  
-  // Fermer le modal de détails et ouvrir le modal d'édition
-  setIsDetailsModalVisible(false);
-  setIsModalVisible(true);
+  try {
+    // Récupérer l'événement complet avec toutes ses données
+    const completeEvent = await databaseService.getEventById(selectedEvent.id);
+    
+    if (completeEvent) {
+      console.log("Événement complet récupéré:", completeEvent);
+      console.log("Localisation récupérée:", completeEvent.location);
+      
+      let startTime = new Date(completeEvent.start);
+      let endTime = new Date(completeEvent.end);
+      
+      // Mettre à jour les sélecteurs de temps
+      setSelectedStartTime(startTime);
+      setSelectedEndTime(endTime);
+      
+      // Mettre à jour l'état newEvent avec l'événement complet
+      setNewEvent(completeEvent);
+      
+      // Fermer le modal de détails et ouvrir le modal d'édition
+      setIsDetailsModalVisible(false);
+      setIsModalVisible(true);
+      setModalMode('edit');
+    } else {
+      console.error("Impossible de récupérer les détails complets de l'événement");
+      Alert.alert("Erreur", "Impossible de récupérer les détails de l'événement");
+    }
+  } catch (error) {
+    console.error("Erreur lors de la récupération de l'événement:", error);
+    Alert.alert("Erreur", "Une erreur est survenue lors de l'édition de l'événement");
+  }
 };
 
   const isValidEventTimes = () => {

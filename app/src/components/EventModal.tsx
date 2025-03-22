@@ -132,6 +132,23 @@ const EventModal: React.FC<EventModalProps> = ({
     }
   }, [eventReminders, isVisible]);
 
+  // Dans EventModal, ajoutez d'abord un log pour vérifier ce que newEvent contient
+  useEffect(() => {
+    if (isVisible && mode === 'edit') {
+      console.log("Édition d'un événement avec données:", newEvent);
+      console.log("Localisation disponible:", newEvent.location);
+    }
+  }, [isVisible, mode, newEvent]);
+
+  // Ajoutez un useEffect pour vérifier ce que contient newEvent lorsque le modal est ouvert
+  useEffect(() => {
+    if (isVisible) {
+      console.log("EventModal ouvert en mode:", mode);
+      console.log("Données de l'événement:", newEvent);
+      console.log("Location de l'événement:", newEvent.location);
+    }
+  }, [isVisible, newEvent, mode]);
+
   const handleToggleChange = (value: boolean) => {
     console.log("Toggle changed to:", value);
     
@@ -741,8 +758,12 @@ const EventModal: React.FC<EventModalProps> = ({
       <LocationPickerModal
         isVisible={isLocationPickerVisible}
         onClose={() => setIsLocationPickerVisible(false)}
-        onSelectLocation={handleSelectLocation}
-        initialLocation={newEvent.location}
+        onSelectLocation={(location) => {
+          console.log("Nouvelle localisation sélectionnée:", location);
+          setNewEvent({ ...newEvent, location });
+          setIsLocationPickerVisible(false);
+        }}
+        initialLocation={newEvent.location} // Assurez-vous que cette ligne est présente
       />
     </Modal>
   );
@@ -1073,6 +1094,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: '#f1f3f4',
     borderRadius: 8,
+  },
+  locationContainer: {
+    marginTop: 10,
+    paddingHorizontal: 10,
+  },
+  locationTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1a73e8',
+  },
+  locationCoords: {
+    fontSize: 14,
+    color: '#757575',
+  },
+  editLocationButton: {
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f1f3f4',
+    borderRadius: 8,
+  },
+  editLocationText: {
+    fontSize: 16,
+    color: '#1a73e8',
+    textAlign: 'center',
   },
 });
 

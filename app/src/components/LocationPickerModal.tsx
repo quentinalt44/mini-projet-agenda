@@ -13,11 +13,18 @@ import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 
+// Vérifiez que cette interface est correcte
 interface LocationPickerModalProps {
   isVisible: boolean;
   onClose: () => void;
-  onSelectLocation: (location: { latitude: number; longitude: number; title?: string } | null) => void;
-  initialLocation?: { latitude: number; longitude: number; title?: string };
+  onSelectLocation: (location: Location) => void;
+  initialLocation?: Location; // S'assurer que c'est optionnel
+}
+
+interface Location {
+  latitude: number;
+  longitude: number;
+  title?: string;
 }
 
 const LocationPickerModal: React.FC<LocationPickerModalProps> = ({ 
@@ -48,6 +55,22 @@ const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
       if (!initialLocation) {
         // Si aucun emplacement n'est déjà défini, obtenir la position actuelle
         getUserLocation();
+      }
+    }
+  }, [isVisible, initialLocation]);
+
+  // Ajoutez cet useEffect pour initialiser correctement les valeurs
+  useEffect(() => {
+    if (isVisible) {
+      console.log("LocationPickerModal ouvert. initialLocation:", initialLocation);
+      
+      // Si une localisation initiale est fournie, l'utiliser
+      if (initialLocation) {
+        console.log("Localisation initiale trouvée:", initialLocation);
+        setSelectedLocation(initialLocation);
+        setLocationTitle(initialLocation.title || '');
+      } else {
+        console.log("Aucune localisation initiale");
       }
     }
   }, [isVisible, initialLocation]);
@@ -276,7 +299,7 @@ const styles = StyleSheet.create({
   },
   locationButton: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 50,
     alignSelf: 'center',
     backgroundColor: '#1a73e8',
     flexDirection: 'row',

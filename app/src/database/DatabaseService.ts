@@ -115,7 +115,7 @@ class DatabaseService {
 
       if (events && events.length > 0) {
         // Pour chaque événement
-        for (const event of events) {
+        for (const event of events as Event[]) {
           // Trouver la catégorie pour l'affichage
           const category = EVENT_CATEGORIES.find(cat => cat.id === (event.category || 'default'));
           const categoryLabel = category ? category.label : 'Par défaut';
@@ -250,44 +250,74 @@ class DatabaseService {
     }
   }
 
+  // Dans la fonction getEvents(), ajoutez des logs pour diagnostiquer le problème
   async getEvents(): Promise<Event[]> {
     try {
+      // Si vous utilisez une requête SQL directe, assurez-vous qu'elle récupère bien les champs de localisation
       const events = await this.db.getAllAsync<Event>(
         'SELECT id, title, summary, start_date, end_date, is_full_day, created_at, category, location_lat, location_lng, location_title FROM events ORDER BY start_date'
       );
       
+      // Log pour voir ce qui est récupéré
+      console.log("📊 Nombre d'événements récupérés:", events.length);
+      
       // Transformation des événements avec leurs rappels et localisation
       const eventsWithReminders = await Promise.all(events.map(async event => {
-        // Récupérer les rappels pour cet événement
-        const reminders = await this.getRemindersForEvent(Number(event.id));
-        
-        // Créer l'objet location s'il y a des coordonnées
-        let location = undefined;
-        if (event.location_lat && event.location_lng) {
-          location = {
-            latitude: event.location_lat,
-            longitude: event.location_lng,
+        try {
+          // Log pour voir les données brutes de chaque événement
+          console.log(`🔍 Événement ${event.id} "${event.title}" - données brutes de location:`, {
+            lat: event.location_lat, 
+            lng: event.location_lng, 
             title: event.location_title
+          });
+          
+          // Récupérer les rappels pour cet événement
+          const reminders = await this.getRemindersForEvent(Number(event.id));
+          
+          // Créer l'objet location s'il y a des coordonnées valides
+          let location = undefined;
+          if (event.location_lat && event.location_lng) {
+            location = {
+              latitude: Number(event.location_lat),
+              longitude: Number(event.location_lng),
+              title: event.location_title || "Emplacement sans nom"
+            };
+            console.log(`📍 Événement ${event.id} a une localisation:`, location);
+          } else {
+            console.log(`⚠️ Événement ${event.id} n'a PAS de localisation valide`);
+          }
+          
+          // Retourner l'événement complet
+          return {
+            id: event.id,
+            title: event.title,
+            summary: event.summary,
+            start_date: event.start_date,
+            end_date: event.end_date,
+            is_full_day: event.is_full_day,
+            isFullDay: event.is_full_day === 1,
+            category: event.category || 'default',
+            reminders: reminders,
+            location: location
+          };
+        } catch (error) {
+          console.error(`❌ Erreur avec l'événement ${event.id}:`, error);
+          // Retourner un événement valide minimal si erreur
+          return {
+            id: event.id,
+            title: event.title || "Événement corrompu",
+            summary: event.summary || "",
+            start_date: event.start_date || new Date().toISOString(),
+            end_date: event.end_date || new Date().toISOString(),
+            is_full_day: 0,
+            isFullDay: false,
+            category: "default",
+            reminders: []
           };
         }
-        
-        return {
-          id: event.id,
-          title: event.title,
-          summary: event.summary,
-          start: event.start_date,
-          end: event.end_date,
-          start_date: event.start_date,
-          end_date: event.end_date,
-          isFullDay: event.is_full_day === 1,
-          created_at: event.created_at,
-          category: event.category || 'default',
-          reminders: reminders,
-          location: location
-        };
       }));
       
-      return eventsWithReminders;
+      return eventsWithReminders as Event[];
     } catch (error) {
       console.error('Error getting events:', error);
       return [];
@@ -335,6 +365,60 @@ class DatabaseService {
     } catch (error) {
       console.error('Error deleting event:', error);
       throw error;
+    }
+  }
+
+  // Dans la fonction getEventById(), assurez-vous de récupérer les informations de localisation
+  async getEventById(id: string | number): Promise<any> {
+    try {
+      const events = await this.db.getAllAsync(
+        'SELECT id, title, summary, start_date, end_date, is_full_day, created_at, category, location_lat, location_lng, location_title FROM events WHERE id = ?',
+        [id]
+      );
+      
+      if (!events || events.length === 0) {
+        console.log(`Événement avec ID ${id} non trouvé`);
+        return null;
+      }
+      
+      const event = events[0] as Event;
+      console.log(`Récupération de l'événement ${id} pour édition`);
+      console.log(`Données de localisation brutes:`, {
+        lat: event.location_lat, 
+        lng: event.location_lng, 
+        title: event.location_title
+      });
+      
+      // Récupérer les rappels
+      const reminders = await this.getRemindersForEvent(Number(id));
+      
+      // Créer l'objet location si les coordonnées existent
+      let location = undefined;
+      if (event.location_lat && event.location_lng) {
+        location = {
+          latitude: Number(event.location_lat),
+          longitude: Number(event.location_lng),
+          title: event.location_title || "Emplacement sans nom"
+        };
+        console.log(`📍 Localisation trouvée pour l'événement ${id}:`, location);
+      } else {
+        console.log(`⚠️ Aucune localisation pour l'événement ${id}`);
+      }
+      
+      return {
+        id: event.id,
+        title: event.title,
+        summary: event.summary,
+        start: event.start_date,
+        end: event.end_date,
+        isFullDay: event.is_full_day === 1,
+        category: event.category || 'default',
+        reminders: reminders,
+        location: location
+      };
+    } catch (error) {
+      console.error(`Error getting event with ID ${id}:`, error);
+      return null;
     }
   }
 }
