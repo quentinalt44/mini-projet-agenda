@@ -12,6 +12,15 @@ interface Event {
   isFullDay?: boolean;
   is_full_day?: number;
   category?: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    title?: string;
+  };
+  // Database specific fields
+  location_lat?: number;
+  location_lng?: number;
+  location_title?: string;
 }
 
 interface Reminder {
@@ -44,7 +53,7 @@ class DatabaseService {
       // Créez ou ouvrez la base de données
       this.db = await SQLite.openDatabaseAsync('calendar.db');
       
-      // Créez la table events avec le champ category
+      // Créez la table events avec les nouveaux champs de localisation
       await this.db.execAsync(`
         CREATE TABLE IF NOT EXISTS events (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,15 +63,18 @@ class DatabaseService {
           end_date TEXT NOT NULL,
           is_full_day INTEGER DEFAULT 0,
           category TEXT DEFAULT 'default',
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          location_lat REAL,
+          location_lng REAL,
+          location_title TEXT
         );
       `);
       
-      // Si la table existe déjà mais n'a pas le champ category, l'ajouter
+      // Ajouter les colonnes de localisation si elles n'existent pas déjà
       try {
-        await this.db.execAsync(`
-          ALTER TABLE events ADD COLUMN category TEXT DEFAULT 'default';
-        `);
+        await this.db.execAsync(`ALTER TABLE events ADD COLUMN location_lat REAL;`);
+        await this.db.execAsync(`ALTER TABLE events ADD COLUMN location_lng REAL;`);
+        await this.db.execAsync(`ALTER TABLE events ADD COLUMN location_title TEXT;`);
       } catch (err) {
         // Si l'erreur est que la colonne existe déjà, c'est ok, sinon relancer l'erreur
         if (!String(err).includes('duplicate column')) {
@@ -111,6 +123,15 @@ class DatabaseService {
           // Récupérer les rappels associés
           const reminders = await this.getRemindersForEvent(Number(event.id));
           
+          // Ajouter l'affichage de la localisation
+          let locationInfo = 'Aucun emplacement défini';
+          if (event.location_lat && event.location_lng) {
+            locationInfo = `${event.location_lat}, ${event.location_lng}`;
+            if (event.location_title) {
+              locationInfo += ` (${event.location_title})`;
+            }
+          }
+          
           // Formater l'affichage principal de l'événement avec un espacement plus propre
           console.log(`
 🎯 ID: ${event.id}
@@ -120,6 +141,7 @@ class DatabaseService {
 🔚 End: ${new Date(event.end_date).toLocaleString('fr-FR')}
 📆 Full Day: ${Boolean(event.is_full_day) ? 'Yes' : 'No'}
 🏷️ Category: ${categoryLabel}
+📍 Location: ${locationInfo}
 ⏱️ Created: ${event.created_at}`);
           
           // Afficher les rappels associés, s'il y en a
@@ -150,8 +172,18 @@ class DatabaseService {
     console.log('Adding event with full day:', event.isFullDay); // Pour debug
     try {
       await this.db.runAsync(
-        'INSERT INTO events (title, summary, start_date, end_date, is_full_day, category) VALUES (?, ?, ?, ?, ?, ?)',
-        [event.title, event.summary, event.start_date, event.end_date, event.isFullDay ? 1 : 0, event.category]
+        'INSERT INTO events (title, summary, start_date, end_date, is_full_day, category, location_lat, location_lng, location_title) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          event.title, 
+          event.summary, 
+          event.start_date, 
+          event.end_date, 
+          event.isFullDay ? 1 : 0, 
+          event.category,
+          event.location?.latitude || null,
+          event.location?.longitude || null,
+          event.location?.title || null
+        ]
       );
       
       // Get the last inserted ID
@@ -221,13 +253,23 @@ class DatabaseService {
   async getEvents(): Promise<Event[]> {
     try {
       const events = await this.db.getAllAsync<Event>(
-        'SELECT id, title, summary, start_date, end_date, is_full_day, created_at, category FROM events ORDER BY start_date'
+        'SELECT id, title, summary, start_date, end_date, is_full_day, created_at, category, location_lat, location_lng, location_title FROM events ORDER BY start_date'
       );
       
-      // Transformation des événements avec leurs rappels
+      // Transformation des événements avec leurs rappels et localisation
       const eventsWithReminders = await Promise.all(events.map(async event => {
         // Récupérer les rappels pour cet événement
         const reminders = await this.getRemindersForEvent(Number(event.id));
+        
+        // Créer l'objet location s'il y a des coordonnées
+        let location = undefined;
+        if (event.location_lat && event.location_lng) {
+          location = {
+            latitude: event.location_lat,
+            longitude: event.location_lng,
+            title: event.location_title
+          };
+        }
         
         return {
           id: event.id,
@@ -237,10 +279,11 @@ class DatabaseService {
           end: event.end_date,
           start_date: event.start_date,
           end_date: event.end_date,
-          isFullDay: event.is_full_day === 1, // Conversion explicite et stricte
+          isFullDay: event.is_full_day === 1,
           created_at: event.created_at,
           category: event.category || 'default',
-          reminders: reminders // Ajout des rappels
+          reminders: reminders,
+          location: location
         };
       }));
       
@@ -251,7 +294,20 @@ class DatabaseService {
     }
   }
 
-  async updateEvent(id: string, event: { title: string; summary?: string; start: string; end: string; isFullDay?: boolean; category?: string; reminders?: Reminder[] }): Promise<void> {
+  async updateEvent(id: string, event: { 
+    title: string; 
+    summary?: string; 
+    start: string; 
+    end: string; 
+    isFullDay?: boolean; 
+    category?: string; 
+    reminders?: Reminder[];
+    location?: {
+      latitude: number;
+      longitude: number;
+      title?: string;
+    } 
+  }): Promise<void> {
     try {
       console.log("⚙️ Mise à jour de l'événement :", id);
       console.log("📊 Données :", {
@@ -280,8 +336,19 @@ class DatabaseService {
       }
       
       await this.db.runAsync(
-        'UPDATE events SET title = ?, summary = ?, start_date = ?, end_date = ?, is_full_day = ?, category = ? WHERE id = ?',
-        [event.title, event.summary || null, startDate, endDate, event.isFullDay ? 1 : 0, event.category || 'default', id]
+        'UPDATE events SET title = ?, summary = ?, start_date = ?, end_date = ?, is_full_day = ?, category = ?, location_lat = ?, location_lng = ?, location_title = ? WHERE id = ?',
+        [
+          event.title, 
+          event.summary || null, 
+          startDate, 
+          endDate, 
+          event.isFullDay ? 1 : 0, 
+          event.category || 'default',
+          event.location?.latitude || null,
+          event.location?.longitude || null,
+          event.location?.title || null,
+          id
+        ]
       );
       
       // Gestion des rappels lors de la mise à jour

@@ -4,6 +4,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Picker } from '@react-native-picker/picker';
 import ReminderItem from './ReminderItem';
+import LocationPickerModal from './LocationPickerModal';
+import * as Location from 'expo-location';
 
 // Ajoutez en haut du fichier pour obtenir les dimensions de l'écran
 const { height: screenHeight } = Dimensions.get('window');
@@ -98,6 +100,9 @@ const EventModal: React.FC<EventModalProps> = ({
 
   // Nouvel état pour les rappels
   const [eventReminders, setEventReminders] = useState<Reminder[]>([]);
+
+  // Ajoutez cet état pour gérer la visibilité du picker d'emplacement
+  const [isLocationPickerVisible, setIsLocationPickerVisible] = useState(false);
 
   // Synchroniser l'état local avec les props quand le modal devient visible
   useEffect(() => {
@@ -348,6 +353,14 @@ const EventModal: React.FC<EventModalProps> = ({
     }
   };
 
+  // Ajoutez cette fonction pour gérer la sélection d'emplacement
+  const handleSelectLocation = (location: { latitude: number; longitude: number; title?: string } | null) => {
+    setNewEvent({
+      ...newEvent,
+      location: location
+    });
+  };
+
   return (
     <Modal
       animationType="slide"
@@ -531,10 +544,13 @@ const EventModal: React.FC<EventModalProps> = ({
                 <View style={{flex: 1}}>
                   <TouchableOpacity 
                     style={[styles.locationButtonAligned]}
-                    // Pas de fonction onPress pour l'instant
+                    onPress={() => setIsLocationPickerVisible(true)}
                   >
                     <Text style={styles.locationButtonText}>
-                      Ajouter un emplacement
+                      {newEvent.location ? 
+                        (newEvent.location.title || "Emplacement défini") : 
+                        "Ajouter un emplacement"
+                      }
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -721,6 +737,13 @@ const EventModal: React.FC<EventModalProps> = ({
           </View>
         </View>
       </Modal>
+
+      <LocationPickerModal
+        isVisible={isLocationPickerVisible}
+        onClose={() => setIsLocationPickerVisible(false)}
+        onSelectLocation={handleSelectLocation}
+        initialLocation={newEvent.location}
+      />
     </Modal>
   );
 };

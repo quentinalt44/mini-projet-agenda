@@ -111,9 +111,10 @@ interface AgendaItems {
 interface CalendarScreenProps {
   onSettingsPress: () => void;
   onMapPress: (location: any) => void;
+  eventToShow?: string | number | null;
 }
 
-const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress, onMapPress }) => {
+const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress, onMapPress, eventToShow }) => {
   const calendarRef = useRef<any>(null);
   const today = new Date();
   const todayString = today.toISOString().split('T')[0];
@@ -217,6 +218,19 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress, onMapP
     loadPreferencesAndEvents();
   }, []);
 
+  useEffect(() => {
+    if (eventToShow) {
+      // Trouver l'événement correspondant à l'ID
+      const event = events.find(e => e.id === eventToShow);
+      if (event) {
+        setSelectedEvent(event);
+        setIsDetailsModalVisible(true);
+      }
+      // Réinitialiser eventToShow pour éviter de rouvrir le modal lors d'un rechargement
+      // Si possible, cette ligne devrait être dans App.tsx après le changement d'écran
+    }
+  }, [eventToShow, events]);
+
   const loadEvents = async () => {
     try {
       const dbEvents = await databaseService.getEvents();
@@ -292,7 +306,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress, onMapP
       end_date: endDateISO,
       isFullDay: newEvent.isFullDay,
       category: newEvent.category || 'default', // Assurez-vous que la catégorie est envoyée
-      reminders: newEvent.reminders || [] // Ajoutez cette ligne
+      reminders: newEvent.reminders || [], // Ajoutez cette ligne
+      location: newEvent.location // Assurez-vous que cette ligne est présente
     };
   
     console.log(`Adding event with full day: ${newEvent.isFullDay}, category: ${newEvent.category || 'default'}`);

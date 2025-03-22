@@ -8,6 +8,7 @@ import MapScreen from './src/screens/MapScreen';
 const App = () => {
   const [currentScreen, setCurrentScreen] = useState('calendar');
   const [mapLocation, setMapLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [eventToShow, setEventToShow] = useState<string | number | null>(null);
 
   const navigateToParams = () => {
     setCurrentScreen('params');
@@ -26,6 +27,13 @@ const App = () => {
     setCurrentScreen('calendar');
   };
 
+  const handleEventPress = (eventId: string | number) => {
+    // Fermer la carte
+    setCurrentScreen('calendar');
+    // Définir l'événement à afficher
+    setEventToShow(eventId);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {currentScreen === 'calendar' ? (
@@ -35,10 +43,11 @@ const App = () => {
         />
       ) : currentScreen === 'params' ? (
         <ParamsScreen onClose={navigateToCalendar} />
-      ) : mapLocation ? (
+      ) : currentScreen === 'map' && mapLocation ? (
         <MapScreen 
           location={mapLocation} 
-          onClose={navigateBack} 
+          onClose={navigateToCalendar}
+          onEventPress={handleEventPress}
         />
       ) : (
         null
