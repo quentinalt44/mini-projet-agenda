@@ -5,7 +5,10 @@ import {
   TouchableOpacity, 
   SafeAreaView,
   Text,
-  Alert
+  Alert,
+  Modal,
+  ScrollView,
+  Switch
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, Callout } from 'react-native-maps';
@@ -258,6 +261,68 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
     return categoryObj?.color || '#1a73e8';
   };
 
+  // États pour les filtres
+  const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+  const [categoryFilters, setCategoryFilters] = useState<{[key: string]: boolean}>({});
+  const [areFiltersActive, setAreFiltersActive] = useState(false);
+  const [filteredEvents, setFilteredEvents] = useState<CalendarEvent[]>([]);
+  
+  // Initialisation des filtres de catégorie basés sur EVENT_CATEGORIES
+  useEffect(() => {
+    const initialFilters = EVENT_CATEGORIES.reduce((acc, category) => {
+      acc[category.id] = true; // Toutes les catégories sont activées par défaut
+      return acc;
+    }, {} as {[key: string]: boolean});
+    
+    setCategoryFilters(initialFilters);
+  }, []);
+  
+  // Appliquer les filtres chaque fois que les événements ou les filtres changent
+  useEffect(() => {
+    if (events.length === 0) {
+      setFilteredEvents([]);
+      return;
+    }
+    
+    // Vérifier si des filtres sont actifs
+    const hasActiveFilters = Object.values(categoryFilters).some(value => !value);
+    setAreFiltersActive(hasActiveFilters);
+    
+    // Appliquer les filtres seulement en mode carte principale
+    if (!props.showSingleEvent && hasActiveFilters) {
+      const filtered = events.filter(event => {
+        // Filtrer par catégorie
+        if (event.category && !categoryFilters[event.category]) {
+          return false;
+        }
+        return true;
+      });
+      
+      setFilteredEvents(filtered);
+    } else {
+      // Si aucun filtre n'est actif ou si on est en mode événement unique, utiliser tous les événements
+      setFilteredEvents(events);
+    }
+  }, [events, categoryFilters, props.showSingleEvent]);
+  
+  // Fonction pour basculer l'état d'un filtre de catégorie
+  const toggleCategoryFilter = (categoryId: string) => {
+    setCategoryFilters(prev => ({
+      ...prev,
+      [categoryId]: !prev[categoryId]
+    }));
+  };
+  
+  // Fonction pour réinitialiser tous les filtres
+  const resetFilters = () => {
+    const resetValues = EVENT_CATEGORIES.reduce((acc, category) => {
+      acc[category.id] = true;
+      return acc;
+    }, {} as {[key: string]: boolean});
+    
+    setCategoryFilters(resetValues);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -274,7 +339,22 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
               : "Emplacement de l'événement"
             : "Carte des événements"}
         </Text>
-        <View style={styles.placeholder} />
+        
+        {/* Bouton de filtre (uniquement en mode carte principale) */}
+        {!props.showSingleEvent ? (
+          <TouchableOpacity 
+            style={styles.filterButton}
+            onPress={() => setIsFilterModalVisible(true)}
+          >
+            <Ionicons 
+              name={areFiltersActive ? "funnel" : "funnel-outline"} 
+              size={22} 
+              color={areFiltersActive ? "#1a73e8" : "#5f6368"} 
+            />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.placeholder} />
+        )}
       </View>
       
       <MapView
@@ -314,8 +394,8 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
           </View>
         </Marker>
 
-        {/* Événements */}
-        {events.map(event => {
+        {/* Événements - Utilisez filteredEvents au lieu de events */}
+        {filteredEvents.map(event => {
           if (!event.location) return null;
           
           return (
@@ -368,6 +448,68 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
           <Ionicons name="locate" size={24} color="#ffffff" />
         </TouchableOpacity>
       </>
+
+      {/* Modal pour les filtres */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isFilterModalVisible}
+        onRequestClose={() => setIsFilterModalVisible(false)}
+      >
+        <View style={styles.filterModalContainer}>
+          <View style={styles.filterModalContent}>
+            <View style={styles.filterModalHeader}>
+              <Text style={styles.filterModalTitle}>Filtrer les événements</Text>
+              <TouchableOpacity onPress={() => setIsFilterModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#5f6368" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.filterCategoriesContainer}>
+              <Text style={styles.filterSectionTitle}>Catégories</Text>
+              
+              {EVENT_CATEGORIES.map(category => (
+                <TouchableOpacity 
+                  key={category.id}
+                  style={styles.categoryFilterItem}
+                  onPress={() => toggleCategoryFilter(category.id)}
+                >
+                  <View style={styles.categoryFilterItemContent}>
+                    <View style={[
+                      styles.categoryIndicator, 
+                      { backgroundColor: category.color }
+                    ]} />
+                    <Text style={styles.categoryFilterItemText}>{category.label}</Text>
+                  </View>
+                  <Switch
+                    value={categoryFilters[category.id]}
+                    onValueChange={() => toggleCategoryFilter(category.id)}
+                    trackColor={{ false: '#d8d8d8', true: '#1a73e8' }}
+                    thumbColor={categoryFilters[category.id] ? '#fff' : '#f4f3f4'}
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            
+            <View style={styles.filterModalFooter}>
+              <TouchableOpacity 
+                style={styles.resetFilterButton}
+                onPress={resetFilters}
+              >
+                <Text style={styles.resetFilterButtonText}>Réinitialiser</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.applyFilterButton}
+                onPress={() => setIsFilterModalVisible(false)}
+              >
+                <Text style={styles.applyFilterButtonText}>Appliquer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      
     </SafeAreaView>
   );
 };
@@ -545,6 +687,87 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 }, // height: 1 → 2
     shadowOpacity: 0.25, // 0.2 → 0.25
     shadowRadius: 3.84, // 2 → 3.84
+  },
+  filterButton: {
+    padding: 8,
+  },
+  filterModalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  filterModalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    maxHeight: '80%',
+  },
+  filterModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  filterModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a73e8',
+  },
+  filterSectionTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 12,
+    color: '#202124',
+  },
+  filterCategoriesContainer: {
+    maxHeight: 300,
+  },
+  categoryFilterItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  categoryFilterItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  categoryFilterItemText: {
+    fontSize: 16,
+    marginLeft: 12,
+    color: '#202124',
+  },
+  filterModalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  resetFilterButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#1a73e8',
+  },
+  resetFilterButtonText: {
+    color: '#1a73e8',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  applyFilterButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+    backgroundColor: '#1a73e8',
+  },
+  applyFilterButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 
