@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, Callout } from 'react-native-maps';
 import { databaseService, EVENT_CATEGORIES } from '../database/DatabaseService';
+import Slider from '@react-native-community/slider';
 
 interface CalendarEvent {
   id?: string | number;
@@ -278,6 +279,20 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
   
   // 1. Ajoutez ces nouveaux états après les états de filtre par catégorie
   const [dateFilter, setDateFilter] = useState('all'); // 'all', 'today', 'week', 'month', 'custom'
+  const [distanceFilter, setDistanceFilter] = useState<number | null>(null);
+
+  // 3. Ajouter la fonction de calcul de distance (formule de Haversine)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Rayon de la Terre en km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance en km
+  };
 
   // Appliquer les filtres chaque fois que les événements ou les filtres changent
   // Modifiez la fonction pour appliquer les filtres
@@ -290,10 +305,11 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
     // Vérifier si des filtres sont actifs
     const hasActiveCategoryFilters = Object.values(categoryFilters).some(value => !value);
     const hasActiveDateFilter = dateFilter !== 'all';
-    setAreFiltersActive(hasActiveCategoryFilters || hasActiveDateFilter);
+    const hasDistanceFilter = distanceFilter !== null;
+    setAreFiltersActive(hasActiveCategoryFilters || hasActiveDateFilter || hasDistanceFilter);
     
     // Appliquer les filtres seulement en mode carte principale
-    if (!props.showSingleEvent && (hasActiveCategoryFilters || hasActiveDateFilter)) {
+    if (!props.showSingleEvent && (hasActiveCategoryFilters || hasActiveDateFilter || hasDistanceFilter)) {
       let filtered = events.filter(event => {
         // Filtrer par catégorie
         if (event.category && !categoryFilters[event.category]) {
@@ -337,6 +353,20 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
           }
         }
         
+        // Filtrer par distance
+        if (hasDistanceFilter && event.location) {
+          const distance = calculateDistance(
+            userPosition.latitude,
+            userPosition.longitude,
+            event.location.latitude,
+            event.location.longitude
+          );
+          
+          if (distance > distanceFilter!) {
+            return false; // L'événement est trop loin
+          }
+        }
+        
         return true;
       });
       
@@ -345,7 +375,7 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
       // Si aucun filtre n'est actif ou si on est en mode événement unique, utiliser tous les événements
       setFilteredEvents(events);
     }
-  }, [events, categoryFilters, dateFilter, props.showSingleEvent]);
+  }, [events, categoryFilters, dateFilter, distanceFilter, props.showSingleEvent, userPosition]);
   
   // Fonction pour basculer l'état d'un filtre de catégorie
   const toggleCategoryFilter = (categoryId: string) => {
@@ -386,6 +416,9 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
     
     // Réinitialiser les filtres de date
     setDateFilter('all');
+    
+    // Réinitialiser le filtre de distance
+    setDistanceFilter(null);
   };
 
   return (
@@ -533,10 +566,13 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
             <ScrollView style={styles.filterCategoriesContainer}>
               <Text style={styles.filterSectionTitle}>Catégories</Text>
               
-              {EVENT_CATEGORIES.map(category => (
+              {EVENT_CATEGORIES.map((category, index, array) => (
                 <TouchableOpacity 
                   key={category.id}
-                  style={styles.categoryFilterItem}
+                  style={[
+                    styles.categoryFilterItem,
+                    index === array.length - 1 && { borderBottomWidth: 0 } // Supprime la bordure du dernier élément
+                  ]}
                   onPress={() => toggleCategoryFilter(category.id)}
                 >
                   <View style={styles.categoryFilterItemContent}>
@@ -554,9 +590,10 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
                   />
                 </TouchableOpacity>
               ))}
-              <View style={styles.filterSeparator} />
+              
+              <View style={{ marginTop: 24 }} />
   
-              <Text style={styles.filterSectionTitle}>Période</Text>
+              <Text style={[styles.filterSectionTitle, { marginTop: 24 }]}>Période</Text>
   
               <TouchableOpacity 
                 style={styles.dateFilterItem}
@@ -604,7 +641,10 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
               </TouchableOpacity>
   
               <TouchableOpacity 
-                style={styles.dateFilterItem}
+                style={[
+                  styles.dateFilterItem,
+                  { borderBottomWidth: 0 } // Supprime la bordure inférieure spécifiquement pour cette option
+                ]}
                 onPress={() => setDateFilter('month')}
               >
                 <Text style={styles.dateFilterItemText}>Ce mois</Text>
@@ -617,8 +657,69 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
                   </View>
                 </View>
               </TouchableOpacity>
+              
+              {/* Ajoutez plus d'espace avant la section Distance */}
+              <View style={{ marginTop: 24 }} />
+              <Text style={styles.filterSectionTitle}>Distance</Text>
   
-              {/* Supprimer tout le TouchableOpacity pour "Période personnalisée" */}
+              <View style={styles.distanceFilterContainer}>
+                <View style={styles.distanceHeaderContainer}>
+                  <Text style={styles.distanceFilterText}>
+                    {distanceFilter === null 
+                      ? 'Toutes distances' 
+                      : `${distanceFilter} km maximum`}
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.resetDistanceButton}
+                    onPress={() => {
+                      if (distanceFilter !== null) {
+                        setDistanceFilter(500);
+                      }
+                    }}
+                    disabled={distanceFilter === null}
+                  >
+                    <Text style={[
+                      styles.resetDistanceButtonText,
+                      distanceFilter === null && { color: '#a0a0a0' } // Grisé si désactivé
+                    ]}>
+                      Réinitialiser
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <Slider
+                  style={styles.distanceSlider}
+                  minimumValue={1}
+                  maximumValue={1000}
+                  step={1}
+                  value={distanceFilter || 500}
+                  onValueChange={(value) => setDistanceFilter(value)}
+                  minimumTrackTintColor="#1a73e8"
+                  maximumTrackTintColor="#d8d8d8"
+                  thumbTintColor="#1a73e8"
+                  disabled={distanceFilter === null}
+                />
+                
+                <View style={styles.distanceLabelsContainer}>
+                  <Text style={styles.distanceLabel}>1 km</Text>
+                  <Text style={styles.distanceLabel}>500 km</Text>
+                  <Text style={styles.distanceLabel}>1000 km</Text>
+                </View>
+                
+                <View style={styles.distanceToggleContainer}>
+                  <Switch
+                    value={distanceFilter !== null}
+                    onValueChange={(enabled) => {
+                      setDistanceFilter(enabled ? 500 : null);
+                    }}
+                    trackColor={{ false: '#d8d8d8', true: '#1a73e8' }}
+                    thumbColor={distanceFilter !== null ? '#fff' : '#f4f3f4'}
+                  />
+                  <Text style={styles.distanceToggleText}>
+                    Activer le filtre de distance
+                  </Text>
+                </View>
+              </View>
             </ScrollView>
             
             <View style={styles.filterModalFooter}>
@@ -1012,6 +1113,67 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  sliderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  slider: {
+    flex: 1,
+    marginRight: 12,
+  },
+  sliderValue: {
+    fontSize: 16,
+    color: '#202124',
+  },
+  distanceFilterContainer: {
+    marginTop: 16,
+  },
+  distanceHeaderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  distanceFilterText: {
+    fontSize: 16,
+    color: '#202124',
+  },
+  resetDistanceButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#1a73e8',
+  },
+  resetDistanceButtonText: {
+    color: '#1a73e8',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  distanceSlider: {
+    marginBottom: 8,
+  },
+  distanceLabelsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  distanceLabel: {
+    fontSize: 12,
+    color: '#5f6368',
+  },
+  distanceToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  distanceToggleText: {
+    fontSize: 14,
+    color: '#202124',
+    marginLeft: 8,
+  },
+  
 });
 
 export default MapScreen;
