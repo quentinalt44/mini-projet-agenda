@@ -225,7 +225,13 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
         >
           <Ionicons name="arrow-back" size={24} color="#1a73e8" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Carte des événements</Text>
+        <Text style={styles.headerTitle}>
+          {props.showSingleEvent === true 
+            ? events.length > 0 
+              ? `Emplacement : ${events[0].title}` 
+              : "Emplacement de l'événement"
+            : "Carte des événements"}
+        </Text>
         <View style={styles.placeholder} />
       </View>
       
@@ -407,6 +413,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#1a73e8',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 10,
   },
   backButton: {
     padding: 8,
