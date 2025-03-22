@@ -517,7 +517,31 @@ const EventModal: React.FC<EventModalProps> = ({
             {/* Séparateur en dessous de la date de fin */}
             <View style={[styles.separator, {marginTop: 3, marginBottom: 15}]} />
 
-            {/* Description avec icône à l'extérieur - correction sans introduire d'erreur */}
+            <View style={styles.formSection}>              
+              {/* Emplacement avec icône alignée */}
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                marginBottom: 15,
+                paddingHorizontal: 10
+              }}>
+                <Text style={{ marginRight: 10, marginTop: 12 }}>
+                  <Ionicons name="location-outline" size={20} color="#1a73e8" />
+                </Text>
+                <View style={{flex: 1}}>
+                  <TouchableOpacity 
+                    style={[styles.locationButtonAligned]}
+                    // Pas de fonction onPress pour l'instant
+                  >
+                    <Text style={styles.locationButtonText}>
+                      Ajouter un emplacement
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* Description avec icône alignée */}
             <View style={{
               flexDirection: 'row',
               alignItems: 'flex-start',
@@ -583,6 +607,7 @@ const EventModal: React.FC<EventModalProps> = ({
 
             {/* Séparateur en dessous de la section rappels */}
             <View style={[styles.separator, {marginTop: 3, marginBottom: 10}]} />
+
           </ScrollView>
           
           <View style={styles.modalButtons}>
@@ -998,6 +1023,33 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     padding: 10,
+  },
+  formSection: {
+    marginBottom: 15,
+  },
+  sectionLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  locationIcon: {
+    marginRight: 8,
+  },
+  locationButtonText: {
+    fontSize: 16,
+    color: '#1a73e8',
+    textAlign: 'center',
+  },
+  locationButtonAligned: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#f1f3f4',
+    borderRadius: 8,
   },
 });
 
