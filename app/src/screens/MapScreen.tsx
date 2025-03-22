@@ -194,27 +194,40 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
     };
   };
 
-  // Ajoutez cette fonction pour ajuster le zoom pour voir tous les marqueurs
+  // Modifiez la fonction fitAllMarkers comme suit
   const fitAllMarkers = () => {
-    if (!mapRef.current || events.length === 0) return;
+    if (!mapRef.current) return;
     
-    // Ajouter tous les points à inclure dans le zoom
-    const points = events
-      .filter(e => e.location)
-      .map(e => ({
-        latitude: e.location!.latitude,
-        longitude: e.location!.longitude,
-      }));
+    // Création d'un tableau pour stocker tous les points à afficher
+    const points = [];
     
-    // Ajouter la position actuelle
+    // Ajouter tous les points des événements
+    if (events.length > 0) {
+      events.forEach(event => {
+        if (event.location) {
+          points.push({
+            latitude: event.location.latitude,
+            longitude: event.location.longitude,
+          });
+        }
+      });
+    }
+    
+    // Toujours ajouter la position de l'utilisateur
     points.push({
-      latitude: location.latitude,
-      longitude: location.longitude
+      latitude: userPosition.latitude,
+      longitude: userPosition.longitude
     });
+    
+    // Si aucun point à afficher, sortir
+    if (points.length === 0) return;
+    
+    // Log pour debug
+    console.log(`Ajustement de la vue pour inclure ${points.length} points (${events.length} événements + position utilisateur)`);
     
     // Ajuster la carte pour voir tous les points
     mapRef.current.fitToCoordinates(points, {
-      edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+      edgePadding: { top: 70, right: 70, bottom: 70, left: 70 }, // Marge plus grande
       animated: true
     });
   };
