@@ -82,7 +82,7 @@ interface Event {
   end_date?: string;
   category?: string;
   reminders?: Reminder[];  // Ajout de la propriété reminders
-  location?: string;  // Add location property
+  location?: string | { latitude: number; longitude: number; title?: string };  // Update location type
 }
 
 interface EventUpdateData {
@@ -908,14 +908,36 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress, onMapP
     setIsModalVisible(true);
   };
 
-  const handleEventPress = (item: AgendaItem) => {
+  const handleEventPress = async (item: AgendaItem) => {
     // Assurez-vous que l'ID est présent
     if (!item.id) {
       console.error('Event has no ID');
       return;
     }
-    setSelectedEvent(item);
-    setIsDetailsModalVisible(true);
+    console.log("Event pressed:", item);
+  
+    try {
+      // Récupérer directement l'événement complet avec les détails de localisation
+      const fullEvent = await databaseService.getEventById(item.id);
+      
+      if (fullEvent) {
+        console.log("Événement complet récupéré pour affichage:", fullEvent);
+        console.log("Location de l'événement:", fullEvent.location);
+        
+        setSelectedEvent(fullEvent);
+        setIsDetailsModalVisible(true);
+      } else {
+        console.error("Impossible de récupérer les détails de l'événement");
+        // Utiliser l'événement de base comme fallback
+        setSelectedEvent(item);
+        setIsDetailsModalVisible(true);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération des détails de l'événement:", error);
+      // Utiliser l'événement de base comme fallback
+      setSelectedEvent(item);
+      setIsDetailsModalVisible(true);
+    }
   };
 
   const handleDeleteEvent = async () => {
@@ -1254,11 +1276,17 @@ const getUserLocation = async () => {
           end: selectedEvent?.end || new Date().toISOString(),
           isFullDay: selectedEvent?.isFullDay,
           category: selectedEvent?.category, // Ajouter cette ligne
-          location: selectedEvent?.location ? {
-            latitude: 0, // You should parse these from your location string
-            longitude: 0, // or store location data in the correct format
-            title: selectedEvent.location
-          } : undefined
+          location: selectedEvent?.location ? (
+            typeof selectedEvent.location === 'string' ? {
+              latitude: 0,
+              longitude: 0,
+              title: selectedEvent.location
+            } : typeof selectedEvent.location === 'object' ? {
+              latitude: (selectedEvent.location as any).latitude || 0,
+              longitude: (selectedEvent.location as any).longitude || 0,
+              title: (selectedEvent.location as any).title
+            } : undefined
+          ) : undefined
         }}
         onClose={() => setIsDetailsModalVisible(false)}
         onEdit={handleEditEvent}

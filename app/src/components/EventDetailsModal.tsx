@@ -55,21 +55,6 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
 }) => {
   // État séparé pour la carte en plein écran
   const [showMapModal, setShowMapModal] = useState(false);
-  
-  // Coordonnées par défaut (Paris) si aucun emplacement n'est spécifié
-  const defaultLocation = {
-    latitude: 48.8566,
-    longitude: 2.3522,
-    title: 'Paris'
-  };
-  
-  // Utiliser l'emplacement de l'événement ou l'emplacement par défaut
-  const location = event.location || defaultLocation;
-  
-  // Vérification de la validité de l'emplacement
-  const hasValidLocation = location && 
-    typeof location.latitude === 'number' && 
-    typeof location.longitude === 'number';
 
   // Fonction pour obtenir les informations de la catégorie
   const getCategoryInfo = (categoryId?: string) => {
@@ -130,6 +115,28 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
     setShowMapModal(!showMapModal);
   };
 
+  // Dans le composant EventDetailsModal, ajoutez ce code de débogage juste avant le return
+  useEffect(() => {
+    // Log détaillé de l'objet event
+    console.log("Event Object:", {
+      id: event.id,
+      title: event.title,
+      hasLocation: Boolean(event.location),
+      locationData: event.location,
+      locationProps: event.location ? Object.keys(event.location) : []
+    });
+    
+    // Vérifier si l'objet location utilise lat/lng au lieu de latitude/longitude
+    if (event.location) {
+      console.log("Location coordinates:", {
+        latitude: event.location.latitude,
+        longitude: event.location.longitude,
+        lat: (event.location as any).lat,
+        lng: (event.location as any).lng
+      });
+    }
+  }, [event]);
+
   return (
     <>
       {/* Modal principal des détails de l'événement */}
@@ -184,16 +191,16 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
               </View>
             )}
             
-            {/* Modifiez la section de vignette de carte pour s'assurer que le toucher est bien capturé */}
-            {hasValidLocation && (
+            {/* Section de la carte avec vérification adaptée pour les données lat/lng */}
+            {(event.location || (event.location as any)?.lat) && (
               <View style={styles.mapSection}>
                 <Text style={styles.mapLabel}>Emplacement:</Text>
                 <View style={styles.mapThumbnailContainer}>
                   <MapView
                     style={styles.mapThumbnail}
                     region={{
-                      latitude: location.latitude,
-                      longitude: location.longitude,
+                      latitude: event.location?.latitude || (event.location as any)?.lat || 0,
+                      longitude: event.location?.longitude || (event.location as any)?.lng || 0,
                       latitudeDelta: 0.01,
                       longitudeDelta: 0.01,
                     }}
@@ -204,24 +211,28 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                   >
                     <Marker
                       coordinate={{
-                        latitude: location.latitude,
-                        longitude: location.longitude
+                        latitude: event.location?.latitude || (event.location as any)?.lat || 0,
+                        longitude: event.location?.longitude || (event.location as any)?.lng || 0
                       }}
                     />
                   </MapView>
                   
-                  {/* Un bouton explicite par-dessus la carte */}
                   <TouchableOpacity 
                     style={styles.mapExpandButton}
                     onPress={() => {
-                      const mapParams = {
-                        location: location,
+                      // Créer un objet de données standardisé pour la carte
+                      const mapData = {
+                        location: {
+                          latitude: event.location?.latitude || (event.location as any)?.lat || 0,
+                          longitude: event.location?.longitude || (event.location as any)?.lng || 0,
+                          title: event.location?.title || (event.location as any)?.title || event.title
+                        },
                         eventId: event.id,
                         showSingleEvent: true
                       };
                       
-                      console.log('Ouverture de la carte avec paramètres:', mapParams);
-                      onMapPress(mapParams);
+                      console.log('Ouverture de la carte avec paramètres:', mapData);
+                      onMapPress(mapData);
                       onClose();
                     }}
                   >

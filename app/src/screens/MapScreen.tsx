@@ -43,6 +43,13 @@ interface MapScreenProps {
 const MapScreen: React.FC<MapScreenProps> = (props) => {
   const { location, onClose, onEventPress, eventId, showSingleEvent } = props;
   
+  // Ajout d'un état pour conserver la position réelle de l'utilisateur
+  const [userPosition, setUserPosition] = useState({
+    latitude: location.latitude,
+    longitude: location.longitude,
+    title: location.title || "Ma position"
+  });
+  
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMapReady, setIsMapReady] = useState(false);
@@ -194,14 +201,16 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
 
   // Ajoutez cette nouvelle fonction après fitAllMarkers
   const centerOnMyLocation = () => {
+    console.log("Centrage sur position utilisateur:", userPosition);
+    
     if (!mapRef.current) return;
     
     mapRef.current.animateToRegion({
-      latitude: location.latitude,
-      longitude: location.longitude,
-      latitudeDelta: 0.01, // Zoom un peu plus proche pour votre position
+      latitude: userPosition.latitude,
+      longitude: userPosition.longitude,
+      latitudeDelta: 0.01,
       longitudeDelta: 0.01,
-    }, 500); // Animation de 500ms
+    }, 500);
   };
 
   // Ajoutez cette fonction utilitaire dans votre composant MapScreen (après le formatEventDate)
@@ -251,7 +260,7 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
           // Marquer la carte comme prête
           setIsMapReady(true);
         }}
-        showsUserLocation={true}
+        showsUserLocation={false} // Changé de true à false
         followsUserLocation={false}
         zoomEnabled={true}
         zoomControlEnabled={true}
@@ -259,100 +268,38 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
         moveOnMarkerPress={false}
         showsMyLocationButton={true}
       >
-        {/* Position actuelle */}
-        <Marker
-          coordinate={{
-            latitude: location.latitude,
-            longitude: location.longitude
-          }}
-          title="Ma position"
-          pinColor="#4285F4"
-        >
-          <View style={styles.userLocationMarker}>
-            <View style={styles.userLocationDot} />
-          </View>
-        </Marker>
-
-        {/* Marqueurs pour chaque événement avec localisation */}
-        {events.length > 0 ? (
-          events.map(event => {
-            // Log plus détaillé pour chaque événement lors du rendu
-            console.log(`Rendu de l'événement ${event.id} - ${event.title}`);
-            
-            // Vérifier que location existe avant d'accéder à ses propriétés
-            if (!event.location) {
-              console.log(`Événement ${event.id} ignoré: location indéfini`);
-              return null;
-            }
-            
-            console.log(`Coordonnées: ${typeof event.location.latitude} (${event.location.latitude}), ${typeof event.location.longitude} (${event.location.longitude})`);
-            
-            // Assurez-vous que les coordonnées sont des nombres
-            const latitude = Number(event.location.latitude);
-            const longitude = Number(event.location.longitude);
-            
-            // Vérifier que l'événement a des coordonnées valides
-            if (!event.location || typeof event.location.latitude !== 'number' || typeof event.location.longitude !== 'number') {
-              console.log(`Événement ${event.id} ignoré: coordonnées invalides`);
-              return null;
-            }
-            
-            return (
-              <Marker
-                key={event.id}
-                coordinate={{
-                  latitude: latitude,
-                  longitude: longitude
-                }}
-                title={event.title}
-                description={formatEventDate(event.start)}
-                pinColor={getCategoryColor(event.category)} // Utilisez la couleur de la catégorie
-                onCalloutPress={() => {
-                  if (onEventPress && event.id !== undefined) {
-                    onEventPress(event.id);
-                  }
-                }}
-              >
-                <Callout tooltip style={styles.eventCallout}>
-                  <View style={styles.calloutContainer}>
-                    <View style={styles.calloutHeader}>
-                      <View 
-                        style={[
-                          styles.categoryIndicator, 
-                          { backgroundColor: getCategoryColor(event.category) }
-                        ]} 
-                      />
-                      <Text style={styles.calloutTitle}>{event.title}</Text>
-                    </View>
-                    <Text style={styles.calloutDate}>
-                      {formatEventDate(event.start)}
-                    </Text>
-                    <Text style={styles.calloutCategory}>
-                      {EVENT_CATEGORIES.find(cat => cat.id === event.category)?.label || "Sans catégorie"}
-                    </Text>
-                    <Text style={styles.calloutLocation}>
-                      {event.location?.title || "Emplacement sans nom"}
-                    </Text>
-                    <Text style={styles.calloutHint}>
-                      Appuyez pour voir les détails
-                    </Text>
-                  </View>
-                </Callout>
-              </Marker>
-            );
-          })
-        ) : !isLoading ? (
-          // Si aucun événement et pas en chargement, afficher un message sur la carte
+        {/* Position de l'utilisateur */}
+        {!props.showSingleEvent && (
           <Marker
             coordinate={{
-              latitude: location.latitude,
-              longitude: location.longitude
+              latitude: userPosition.latitude,
+              longitude: userPosition.longitude
             }}
-            title="Aucun événement"
-            description="Ajoutez des événements avec des emplacements pour les voir ici"
-            pinColor="#AAAAAA"
-          />
-        ) : null}
+            title="Ma position"
+          >
+            <View style={styles.userLocationMarker}>
+              <View style={styles.userLocationDot} />
+            </View>
+          </Marker>
+        )}
+
+        {/* Événements */}
+        {events.map(event => {
+          if (!event.location) return null;
+          
+          return (
+            <Marker
+              key={String(event.id)}
+              coordinate={{
+                latitude: event.location.latitude,
+                longitude: event.location.longitude
+              }}
+              title={event.title}
+              description={formatEventDate(event.start)}
+              pinColor={getCategoryColor(event.category)}
+            />
+          );
+        })}
       </MapView>
 
       {isLoading && (
@@ -384,12 +331,14 @@ const MapScreen: React.FC<MapScreenProps> = (props) => {
         </TouchableOpacity>
         
         {/* Bouton pour recentrer sur ma position */}
-        <TouchableOpacity 
-          style={styles.myLocationButton}
-          onPress={centerOnMyLocation}
-        >
-          <Ionicons name="locate" size={24} color="#ffffff" />
-        </TouchableOpacity>
+        {!props.showSingleEvent && (
+          <TouchableOpacity 
+            style={styles.myLocationButton}
+            onPress={centerOnMyLocation}
+          >
+            <Ionicons name="locate" size={24} color="#ffffff" />
+          </TouchableOpacity>
+        )}
       </>
     </SafeAreaView>
   );
