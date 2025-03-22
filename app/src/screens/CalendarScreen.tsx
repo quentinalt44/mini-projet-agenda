@@ -61,6 +61,7 @@ interface TimelineEvent {
   summary?: string;
   isFullDay?: boolean;
   category?: string;
+  location?: string | { latitude: number; longitude: number; title?: string } | any;
 }
 
 type ViewType = 'day' | 'week' | 'month';
@@ -242,19 +243,71 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress, onMapP
     }
   }, [eventToShow, events]);
 
+  // Modifiez la fonction loadEvents (ligne 275) pour inclure explicitement la localisation
   const loadEvents = async () => {
     try {
       const dbEvents = await databaseService.getEvents();
       if (Array.isArray(dbEvents)) {
-        const formattedEvents = dbEvents.map(event => ({
-          id: event.id?.toString(), // Convert number to string
-          start: event.start_date,
-          end: event.end_date,
-          title: event.title,
-          summary: event.summary,
-          isFullDay: event.isFullDay,
-          category: event.category // Ajouter cette ligne manquante
-        }));
+        // Ajouter un log de débogage
+        console.log("📊 Nombre d'événements récupérés:", dbEvents.length);
+        
+        // Examiner les données de localisation de chaque événement
+        dbEvents.forEach(event => {
+          console.log(`🔍 Événement ${event.id} "${event.title}" - données brutes de location:`, event.location);
+        });
+        
+        const formattedEvents = dbEvents.map(event => {
+          // Analyser les données de localisation
+          let locationData = undefined;
+          
+          if (event.location) {
+            try {
+              // Si la localisation est déjà un objet, l'utiliser tel quel
+              if (typeof event.location === 'object') {
+                const { latitude, longitude, title } = event.location;
+                
+                if (latitude && longitude) {
+                  locationData = {
+                    latitude: latitude,
+                    longitude: longitude,
+                    title: title || ''
+                  };
+                  console.log(`📍 Événement ${event.id} a une localisation:`, locationData);
+                } else {
+                  console.log(`⚠️ Événement ${event.id} n'a PAS de localisation valide`);
+                }
+              }
+              // Si c'est une chaîne, essayer de l'analyser comme JSON
+              else if (typeof event.location === 'string' && event.location && (event.location as string).trim() !== '') {
+                const parsedLocation = JSON.parse(event.location as string);
+                if (parsedLocation.lat && parsedLocation.lng) {
+                  locationData = {
+                    latitude: parsedLocation.lat,
+                    longitude: parsedLocation.lng,
+                    title: parsedLocation.title || ''
+                  };
+                  console.log(`📍 Événement ${event.id} a une localisation:`, locationData);
+                }
+              }
+            } catch (error) {
+              console.log(`❌ Erreur lors de l'analyse de la localisation pour l'événement ${event.id}:`, error);
+            }
+          } else {
+            console.log(`⚠️ Événement ${event.id} n'a PAS de localisation valide`);
+          }
+          
+          return {
+            id: event.id?.toString(),
+            start: event.start_date,
+            end: event.end_date,
+            title: event.title,
+            summary: event.summary,
+            isFullDay: event.isFullDay,
+            category: event.category,
+            location: locationData // Utiliser les données analysées
+          };
+        });
+        
         setEvents(formattedEvents);
       } else {
         setEvents([]);
@@ -588,7 +641,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress, onMapP
               start: event.start,
               end: event.end,
               isFullDay: event.isFullDay,
-              category: event.category // Ajouter la catégorie
+              category: event.category,
+              location: event.location // Ajoutez cette ligne
             });
             
             // Passer au jour suivant
@@ -625,7 +679,8 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress, onMapP
               start: event.start,
               end: event.end,
               isFullDay: event.isFullDay,
-              category: event.category  // Ajout de cette ligne qui manquait
+              category: event.category,
+              location: event.location // Ajoutez cette ligne
             });
             
             // Passer au jour suivant
@@ -817,22 +872,62 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ onSettingsPress, onMapP
                   fontWeight: 'bold' as 'bold'
                 };
               
+              // Dans la fonction renderItem de l'Agenda, ajoutez ces logs juste avant le return
+              console.log(`Événement ${item.title}, localisation:`, item.location);
+              console.log(`Type de la localisation:`, typeof item.location);
+              console.log(`Données complètes:`, JSON.stringify(item));
+              
               return (
                 <TouchableOpacity 
                   style={itemStyle}
                   onPress={() => handleEventPress(item)}
                 >
+                  {/* Première ligne avec titre et badge */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Text style={titleStyle}>{item.title}</Text>
-                    {badge && (
-                      <View style={badgeStyle}>
-                        <Text style={badgeTextStyle}>{badge}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      {/* Badge existant */}
+                      {badge && (
+                        <View style={badgeStyle}>
+                          <Text style={badgeTextStyle}>{badge}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  
+                  {/* Deuxième ligne avec description et icône de localisation */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                    {/* Description à gauche */}
+                    <Text style={summaryStyle}>
+                      {item.summary || ""}
+                    </Text>
+                    
+                    {/* Titre et icône de localisation à droite */}
+                    {(item.location !== undefined && item.location !== null) && (
+                      <View style={{ 
+                        flexDirection: 'row', 
+                        alignItems: 'center', 
+                        marginLeft: 4 
+                      }}>
+                        {/* Titre de la localisation */}
+                        <Text style={{ 
+                          fontSize: 12, 
+                          color: item.isFullDay ? '#ffffff' : '#5f6368',
+                          marginRight: 4,
+                          fontStyle: 'italic' 
+                        }}>
+                          {typeof item.location === 'object' && item.location.title ? item.location.title : ''}
+                        </Text>
+                        
+                        {/* Icône de localisation simplifiée */}
+                        <Ionicons 
+                          name="location" 
+                          size={14}
+                          color={item.isFullDay ? '#ffffff' : '#000000'} 
+                        />
                       </View>
                     )}
                   </View>
-                  {item.summary && (
-                    <Text style={summaryStyle}>{item.summary}</Text>
-                  )}
                 </TouchableOpacity>
               );
             }}
